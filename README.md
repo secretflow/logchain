@@ -99,16 +99,7 @@ go build -o bin/engine ./cmd/engine
 ```
 
 ### Testing
-```bash
-# Run all tests
-go test ./...
-
-# Run tests with coverage
-go test -cover ./...
-
-# Run tests for specific package
-go test ./processing/worker
-```
+Waiting for future implementation.
 
 ## Message Flow
 
