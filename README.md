@@ -75,9 +75,6 @@ Key components to be implemented:
 ```bash
 # Start infrastructure dependencies
 docker-compose up -d
-
-# Create Kafka topic
-docker-compose exec kafka kafka-topics --create --bootstrap-server localhost:9092 --partitions 6 --replication-factor 1 --topic log_submissions
 ```
 
 ### Building
