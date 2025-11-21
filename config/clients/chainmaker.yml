@@ -6,12 +6,12 @@ chain_id: "chain1"
 org_id: "wx-org1.chainmaker.org"
 
 # TLS connection credentials (please use absolute paths or paths relative to executable)
-user_key_path: "/home/heangzhan/chainmaker/chainmaker-go/build/crypto-config/wx-org1.chainmaker.org/user/client1/client1.sign.key"
-user_cert_path: "/home/heangzhan/chainmaker/chainmaker-go/build/crypto-config/wx-org1.chainmaker.org/user/client1/client1.sign.crt"
+user_key_path: "/your/path/to/chainmaker-go/build/crypto-config/wx-org1.chainmaker.org/user/client1/client1.sign.key"
+user_cert_path: "/your/path/to/chainmaker-go/build/crypto-config/wx-org1.chainmaker.org/user/client1/client1.sign.crt"
 
 # Transaction signing credentials
-user_sign_key_path: "/home/heangzhan/chainmaker/chainmaker-go/build/crypto-config/wx-org1.chainmaker.org/user/client1/client1.sign.key"
-user_sign_cert_path: "/home/heangzhan/chainmaker/chainmaker-go/build/crypto-config/wx-org1.chainmaker.org/user/client1/client1.sign.crt"
+user_sign_key_path: "/your/path/to/chainmaker-go/build/crypto-config/wx-org1.chainmaker.org/user/client1/client1.sign.key"
+user_sign_cert_path: "/your/path/to/chainmaker-go/build/crypto-config/wx-org1.chainmaker.org/user/client1/client1.sign.crt"
 
 # Node list
 nodes:
@@ -20,37 +20,37 @@ nodes:
     use_tls: true
     tls_host_name: "chainmaker.org"
     ca_paths:
-      - "/home/heangzhan/chainmaker/chainmaker-go/build/crypto-config/wx-org1.chainmaker.org/ca"
-      - "/home/heangzhan/chainmaker/chainmaker-go/build/crypto-config/wx-org2.chainmaker.org/ca"
-      - "/home/heangzhan/chainmaker/chainmaker-go/build/crypto-config/wx-org3.chainmaker.org/ca"
-      - "/home/heangzhan/chainmaker/chainmaker-go/build/crypto-config/wx-org4.chainmaker.org/ca"
+      - "/your/path/to/chainmaker-go/build/crypto-config/wx-org1.chainmaker.org/ca"
+      - "/your/path/to/chainmaker-go/build/crypto-config/wx-org2.chainmaker.org/ca"
+      - "/your/path/to/chainmaker-go/build/crypto-config/wx-org3.chainmaker.org/ca"
+      - "/your/path/to/chainmaker-go/build/crypto-config/wx-org4.chainmaker.org/ca"
   - address: "127.0.0.1:12302"
     conn_count: 10
     use_tls: true
     tls_host_name: "chainmaker.org"
     ca_paths:
-      - "/home/heangzhan/chainmaker/chainmaker-go/build/crypto-config/wx-org1.chainmaker.org/ca"
-      - "/home/heangzhan/chainmaker/chainmaker-go/build/crypto-config/wx-org2.chainmaker.org/ca"
-      - "/home/heangzhan/chainmaker/chainmaker-go/build/crypto-config/wx-org3.chainmaker.org/ca"
-      - "/home/heangzhan/chainmaker/chainmaker-go/build/crypto-config/wx-org4.chainmaker.org/ca"
+      - "/your/path/to/chainmaker-go/build/crypto-config/wx-org1.chainmaker.org/ca"
+      - "/your/path/to/chainmaker-go/build/crypto-config/wx-org2.chainmaker.org/ca"
+      - "/your/path/to/chainmaker-go/build/crypto-config/wx-org3.chainmaker.org/ca"
+      - "/your/path/to/chainmaker-go/build/crypto-config/wx-org4.chainmaker.org/ca"
   - address: "127.0.0.1:12303"
     conn_count: 10
     use_tls: true
     tls_host_name: "chainmaker.org"
     ca_paths:
-      - "/home/heangzhan/chainmaker/chainmaker-go/build/crypto-config/wx-org1.chainmaker.org/ca"
-      - "/home/heangzhan/chainmaker/chainmaker-go/build/crypto-config/wx-org2.chainmaker.org/ca"
-      - "/home/heangzhan/chainmaker/chainmaker-go/build/crypto-config/wx-org3.chainmaker.org/ca"
-      - "/home/heangzhan/chainmaker/chainmaker-go/build/crypto-config/wx-org4.chainmaker.org/ca"
+      - "/your/path/to/chainmaker-go/build/crypto-config/wx-org1.chainmaker.org/ca"
+      - "/your/path/to/chainmaker-go/build/crypto-config/wx-org2.chainmaker.org/ca"
+      - "/your/path/to/chainmaker-go/build/crypto-config/wx-org3.chainmaker.org/ca"
+      - "/your/path/to/chainmaker-go/build/crypto-config/wx-org4.chainmaker.org/ca"
   - address: "127.0.0.1:12304"
     conn_count: 10
     use_tls: true
     tls_host_name: "chainmaker.org"
     ca_paths:
-      - "/home/heangzhan/chainmaker/chainmaker-go/build/crypto-config/wx-org1.chainmaker.org/ca"
-      - "/home/heangzhan/chainmaker/chainmaker-go/build/crypto-config/wx-org2.chainmaker.org/ca"
-      - "/home/heangzhan/chainmaker/chainmaker-go/build/crypto-config/wx-org3.chainmaker.org/ca"
-      - "/home/heangzhan/chainmaker/chainmaker-go/build/crypto-config/wx-org4.chainmaker.org/ca"
+      - "/your/path/to/chainmaker-go/build/crypto-config/wx-org1.chainmaker.org/ca"
+      - "/your/path/to/chainmaker-go/build/crypto-config/wx-org2.chainmaker.org/ca"
+      - "/your/path/to/chainmaker-go/build/crypto-config/wx-org3.chainmaker.org/ca"
+      - "/your/path/to/chainmaker-go/build/crypto-config/wx-org4.chainmaker.org/ca"
 
 # === Business Logic Required ===
 contract_name: "log_store_contract"

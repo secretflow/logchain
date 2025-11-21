@@ -8,6 +8,7 @@ A system for transparently attesting logs on a blockchain with multi-dimensional
 |----------|---------|----------|
 | **[design.md](docs/design.md)** | 🏗️ **Complete system architecture, design decisions, and specifications** | Architects, Senior Developers |
 | **[README.md](#)** | 🚀 **Project overview, quick start, and setup instructions** | New Contributors, Users |
+| **[chainmaker_deployment.md](docs/chainmaker_deployment.md)** | ⛓️ **Blockchain deployment and contract setup guide** | DevOps, Developers |
 | **[CLAUDE.md](CLAUDE.md)** | 💻 **Development guidelines, coding standards, and implementation details** | Developers, AI Assistants |
 
 📖 **This README focuses on getting started. For architecture details, see [design.md](docs/design.md). For development specifics, see [CLAUDE.md](CLAUDE.md).**
@@ -72,6 +73,11 @@ Key components to be implemented:
 ## Development
 
 ### Prerequisites
+
+> [!IMPORTANT]
+> Before starting the services, you must deploy ChainMaker and the smart contracts.
+> Please follow the **[ChainMaker Deployment Guide](docs/chainmaker_deployment.md)** first.
+
 ```bash
 # Start infrastructure dependencies
 docker-compose up -d
