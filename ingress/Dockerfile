@@ -9,6 +9,7 @@ RUN apk add --no-cache \
     ca-certificates \
     lua-resty-http \
     lua-resty-openssl \
+    libcap \
     && rm -rf /var/cache/apk/*
 
 # Create necessary directories
@@ -23,10 +24,13 @@ COPY nginx/nginx.conf /etc/nginx/nginx.conf
 COPY nginx/conf.d/ /etc/nginx/conf.d/
 COPY nginx/lua/ /etc/nginx/lua/
 
-# Set permissions
+# Set permissions and capabilities for non-root (nobody) worker
 RUN chmod -R 755 /etc/nginx/lua \
     && chmod 644 /etc/nginx/nginx.conf \
-    && chmod 644 /etc/nginx/conf.d/*.conf
+    && chmod 644 /etc/nginx/conf.d/*.conf \
+    && chown -R nobody:nobody /etc/nginx \
+    && chown -R nobody:nobody /var/log/nginx /var/cache/nginx \
+    && setcap 'cap_net_bind_service=+ep' /usr/local/openresty/nginx/sbin/nginx
 
 # Expose ports
 EXPOSE 80 443 50052

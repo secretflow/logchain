@@ -100,14 +100,9 @@ local function validate_api_key_redis(api_key)
     local client_info_json, err = red:get("api_key:" .. api_key)
 
     -- Check for operation errors
-    if err then
-        -- Return connection to keepalive pool instead of closing
-        local ok, err = red:set_keepalive(10000, 100)  -- 10s timeout, 100 connections max
-        if not ok then
-            ngx.log(ngx.ERR, "Failed to set keepalive: ", err)
-            red:close()
-        end
+    if err or not client_info_json or client_info_json == ngx.null then
         ngx.log(ngx.ERR, "Redis GET error: ", err)
+        redis:close()
         return nil, "Authentication service error"
     end
 

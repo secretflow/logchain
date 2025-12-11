@@ -55,7 +55,7 @@ services:
   #     timeout: 3s
   #     retries: 3
 
-# need create it with 'docker network create logchain-network' to connect ingestion serevice and query service
+# need create it with 'docker network create logchain-network' to connect ingestion service and query service
 networks:
   logchain-network:
     external: true

@@ -185,7 +185,6 @@ curl -k -XPOST https://localhost/v1/logs \
   -d '{"log_content": "your log content here"}'
 ```
 ```bash
-```Insufficient permissions```
 curl -k -XPOST https://localhost/v1/logs \
   -H "X-API-Key: example-api-key-67890" \
   -H "Content-Type: application/json" \

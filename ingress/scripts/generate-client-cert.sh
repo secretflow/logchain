@@ -55,20 +55,10 @@ extendedKeyUsage = clientAuth
 EOF
 )
 
-# Create PKCS#12 bundle for easy import
-echo "4. Creating PKCS#12 bundle..."
-openssl pkcs12 -export \
-    -out "${CLIENT_DIR}/client.p12" \
-    -inkey "${CLIENT_DIR}/client-key.pem" \
-    -in "${CLIENT_DIR}/client-cert.pem" \
-    -certfile "${CA_DIR}/ca-cert.pem" \
-    -name "${MEMBER_ID}" \
-    -passout pass:changeit
 
 # Set proper permissions
 chmod 600 "${CLIENT_DIR}/client-key.pem"
 chmod 644 "${CLIENT_DIR}/client-cert.pem"
-chmod 644 "${CLIENT_DIR}/client.p12"
 
 # Clean up
 rm -f "${CLIENT_DIR}/client.csr"
@@ -78,7 +68,6 @@ echo "Client certificate generated successfully!"
 echo "Certificate files:"
 echo "  - Client cert: ${CLIENT_DIR}/client-cert.pem"
 echo "  - Client key: ${CLIENT_DIR}/client-key.pem"
-echo "  - PKCS#12 bundle: ${CLIENT_DIR}/client.p12"
 
 
 

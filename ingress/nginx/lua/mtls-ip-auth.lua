@@ -89,7 +89,7 @@ local function authenticate()
     end
     
     -- Verify IP whitelist
-    local is_whitelisted, _ = is_ip_whitelisted(client_ip, load_ip_whitelist())
+    local is_whitelisted, member_id = is_ip_whitelisted(client_ip, load_ip_whitelist())
     if not is_whitelisted then
         -- Log to error.log (for monitoring/alerting)
         ngx.log(ngx.WARN, "[AUTH_FAIL] IP address not whitelisted: ip=", client_ip,
