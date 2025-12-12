@@ -30,6 +30,7 @@ local function load_ip_whitelist()
     return whitelist
 end
 
+-- todo support cidr
 local function is_ip_whitelisted(ip, whitelist)
     if not whitelist or not whitelist.members then
         return false

@@ -157,13 +157,11 @@ upstream ingestion_http {
 ```
 
 ### 7. Configure log directory user group
-**Important** `Due to OpenResty using the nobody user, if the host path is mounted inside the container at /var/log/nginx, the nobody group needs to be added to the host path`
+**Important** `exec this chown in the container`
 
 ```bash
-chown -R nobody:nobody $hostPath
+chown -R nobody:nobody /var/log/nginx
 ```
-
-you also can exec `chown -R nobody:nobody /var/log/nginx` in the container
 
 ### 8. Start the API Gateway
 
@@ -203,13 +201,11 @@ curl -k -XPOST https://localhost/v1/logs \
 
 **gRPC:**
 ```bash
-grpcurl -insecure \
+grpcurl -proto ../proto/logingestion.proto -insecure \
   -H "X-API-Key: example-api-key-12345" \
   -d '{"log_content": "your log content here"}' \
   localhost:50052 \
   logingestion.LogIngestion/SubmitLog
-  
-grpcurl -insecure -d '{"log_content": "your log content here"}' localhost:50052 logingestion.LogIngestion/SubmitLog
 ```
 
 ### Query Operations (API Key Authentication)
@@ -231,20 +227,15 @@ curl -k -X POST https://localhost/query_by_content \
 
 **Query by Transaction Hash:**
 ```bash
-curl https://localhost/log/by_tx/123 \
+curl https://localhost/log/by_tx/{tx_hash} \
   --cert ssl/clients/member-001/client-cert.pem \
-  --key ssl/clients/member-001/client-key.pem \
-  --cacert ssl/ca-cert.pem
-  
-curl https://localhost/log/by_tx/123 \
-  --cert ssl/clients/member02/client-cert.pem \
   --key ssl/clients/member-001/client-key.pem \
   --cacert ssl/ca-cert.pem
 ```
 
 **Query by On-Chain Log ID:**
 ```bash
-curl https://localhost/log/123 \
+curl https://localhost/log/{on_chain_log_id} \
   --cert ssl/clients/member-001/client-cert.pem \
   --key ssl/clients/member-001/client-key.pem \
   --cacert ssl/ca-cert.pem

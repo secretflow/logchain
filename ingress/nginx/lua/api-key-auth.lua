@@ -85,6 +85,7 @@ local function validate_api_key_file(api_key)
     return client_info, nil
 end
 
+-- todo validate_* dry with grpc-api-key-auth
 -- Validate API Key from Redis (with connection reuse for better performance)
 local function validate_api_key_redis(api_key)
     local redis = require "resty.redis"
