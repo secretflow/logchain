@@ -58,16 +58,15 @@ local function authenticate()
     local client_cert_dn = ngx.var.ssl_client_s_dn or "-"
     local client_cert_serial = ngx.var.ssl_client_serial or "-"
 
-    if verify_result ~= "SUCCESS" then
-        -- Get client IP for rate limiting
-        local client_ip = ngx.var.remote_addr
-        if not client_ip or client_ip == "" then
-            client_ip = ngx.var.http_x_forwarded_for
-            if client_ip then
-                client_ip = client_ip:match("([^,]+)") or client_ip
-            end
+    local client_ip = ngx.var.remote_addr
+    if not client_ip or client_ip == "" then
+        client_ip = ngx.var.http_x_forwarded_for
+        if client_ip then
+            client_ip = client_ip:match("([^,]+)") or client_ip
         end
-        
+    end
+
+    if verify_result ~= "SUCCESS" then
         -- Check rate limit for authentication failures
         local rate_limit_key = "mtls_cert_fail:" .. (client_ip or "unknown")
         local is_allowed, rate_limit_err = check_auth_failure_limit(rate_limit_key)
@@ -118,16 +117,6 @@ local function authenticate()
             message = "Valid client certificate is required"
         }))
         ngx.exit(401)
-    end
-    
-    -- Get client IP
-    local client_ip = ngx.var.remote_addr
-    if not client_ip or client_ip == "" then
-        client_ip = ngx.var.http_x_forwarded_for
-        if client_ip then
-            -- Take the first IP if X-Forwarded-For contains multiple IPs
-            client_ip = client_ip:match("([^,]+)") or client_ip
-        end
     end
     
     -- Verify IP whitelist

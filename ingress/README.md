@@ -208,6 +208,8 @@ grpcurl -insecure \
   -d '{"log_content": "your log content here"}' \
   localhost:50052 \
   logingestion.LogIngestion/SubmitLog
+  
+grpcurl -insecure -d '{"log_content": "your log content here"}' localhost:50052 logingestion.LogIngestion/SubmitLog
 ```
 
 ### Query Operations (API Key Authentication)
@@ -229,15 +231,20 @@ curl -k -X POST https://localhost/query_by_content \
 
 **Query by Transaction Hash:**
 ```bash
-curl https://localhost/log/by_tx/{tx_hash} \
+curl https://localhost/log/by_tx/123 \
   --cert ssl/clients/member-001/client-cert.pem \
+  --key ssl/clients/member-001/client-key.pem \
+  --cacert ssl/ca-cert.pem
+  
+curl https://localhost/log/by_tx/123 \
+  --cert ssl/clients/member02/client-cert.pem \
   --key ssl/clients/member-001/client-key.pem \
   --cacert ssl/ca-cert.pem
 ```
 
 **Query by On-Chain Log ID:**
 ```bash
-curl https://localhost/log/{on_chain_log_id} \
+curl https://localhost/log/123 \
   --cert ssl/clients/member-001/client-cert.pem \
   --key ssl/clients/member-001/client-key.pem \
   --cacert ssl/ca-cert.pem
