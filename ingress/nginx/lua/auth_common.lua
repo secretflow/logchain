@@ -115,12 +115,52 @@ local function write_audit_log(audit_log_file, level, message)
     end
 end
 
+-- Rate limiting configuration for authentication failures
+-- Default: 5 failures per 60 seconds per IP/Key
+local MAX_AUTH_FAILURES = tonumber(os.getenv("MAX_AUTH_FAILURES")) or 5
+local AUTH_FAILURE_WINDOW = tonumber(os.getenv("AUTH_FAILURE_WINDOW")) or 60  -- seconds
+
+-- Check and record authentication failure using lua-resty-limit-traffic
+-- Returns: is_allowed (boolean), err (string or nil)
+local function check_auth_failure_limit(key)
+    local limit_count = require "resty.limit.count"
+    
+    -- Create a limit object with shared memory zone
+    -- The shared memory zone should be defined in nginx.conf as: lua_shared_dict auth_failures 10m;
+    local lim, err = limit_count.new("auth_failures", MAX_AUTH_FAILURES, AUTH_FAILURE_WINDOW)
+    if not lim then
+        ngx.log(ngx.ERR, "Failed to create limit object: ", err)
+        -- On error, allow the request to proceed (fail open)
+        return true, nil
+    end
+    
+    -- Check if the key has exceeded the failure limit
+    local delay, err = lim:incoming(key, true)
+    if not delay then
+        if err == "rejected" then
+            -- Limit exceeded
+            ngx.log(ngx.WARN, "[RATE_LIMIT] Authentication failure limit exceeded for key: ", key)
+            return false, "Too many authentication failures. Please try again later."
+        else
+            ngx.log(ngx.ERR, "Failed to check limit: ", err)
+            -- On error, allow the request to proceed (fail open)
+            return true, nil
+        end
+    end
+    
+    -- Limit not exceeded
+    return true, nil
+end
+
 _M.CLOCK_SKEW_SECONDS = CLOCK_SKEW_SECONDS
 _M.is_null = is_null
 _M.parse_iso8601_utc = parse_iso8601_utc
 _M.validate_activation_window = validate_activation_window
 _M.ensure_permission = ensure_permission
 _M.write_audit_log = write_audit_log
+_M.check_auth_failure_limit = check_auth_failure_limit
+_M.MAX_AUTH_FAILURES = MAX_AUTH_FAILURES
+_M.AUTH_FAILURE_WINDOW = AUTH_FAILURE_WINDOW
 
 return _M
 

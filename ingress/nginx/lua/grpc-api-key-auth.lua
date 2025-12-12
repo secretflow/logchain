@@ -21,6 +21,7 @@ local REQUIRED_GRPC_PERMISSION = "submit_log"
 local validate_activation_window = auth_common.validate_activation_window
 local ensure_permission = auth_common.ensure_permission
 local write_audit_log_common = auth_common.write_audit_log
+local check_auth_failure_limit = auth_common.check_auth_failure_limit
 
 local function write_audit_log(level, message)
     return write_audit_log_common(AUDIT_LOG_FILE, level, message)
@@ -164,6 +165,15 @@ end
 
 -- Main authentication function
 local function authenticate()
+    -- Get client IP for rate limiting
+    local client_ip = ngx.var.remote_addr
+    if not client_ip or client_ip == "" then
+        client_ip = ngx.var.http_x_forwarded_for
+        if client_ip then
+            client_ip = client_ip:match("([^,]+)") or client_ip
+        end
+    end
+    
     -- Get API Key from gRPC metadata
     -- gRPC metadata is passed as HTTP headers, typically as "x-api-key" or in metadata
     local api_key = ngx.var.http_x_api_key or 
@@ -171,13 +181,33 @@ local function authenticate()
                     ngx.var.http_grpc_metadata_api_key
     
     if not api_key or api_key == "" then
+        -- Check rate limit for missing API key (based on IP)
+        local rate_limit_key = "grpc_apikey_missing:" .. (client_ip or "unknown")
+        local is_allowed, rate_limit_err = check_auth_failure_limit(rate_limit_key)
+        if not is_allowed then
+            ngx.log(ngx.WARN, "[AUTH_FAIL] Rate limit exceeded for missing API key in gRPC request: ip=", client_ip)
+            
+            local audit_msg = string.format("%s|%s|%s|429|-|-|GRPC_API_KEY|Rate limit exceeded: %s",
+                client_ip or "-",
+                "gRPC",
+                ngx.var.request_uri or "-",
+                rate_limit_err or "Too many failures")
+            write_audit_log("FAIL", audit_msg)
+            
+            ngx.status = 429
+            ngx.header["Content-Type"] = "application/grpc"
+            ngx.header["Grpc-Status"] = "8"  -- RESOURCE_EXHAUSTED
+            ngx.header["Grpc-Message"] = rate_limit_err or "Too many authentication failures. Please try again later."
+            ngx.exit(429)
+        end
+        
         -- Log to error.log (for monitoring/alerting)
-        ngx.log(ngx.WARN, "[AUTH_FAIL] Missing API key in gRPC request: ip=", ngx.var.remote_addr,
+        ngx.log(ngx.WARN, "[AUTH_FAIL] Missing API key in gRPC request: ip=", client_ip,
                 ", uri=", ngx.var.request_uri)
         
         -- Write to audit.log
         local audit_msg = string.format("%s|%s|%s|401|-|-|GRPC_API_KEY|Missing API key",
-            ngx.var.remote_addr or "-",
+            client_ip or "-",
             "gRPC",
             ngx.var.request_uri or "-")
         write_audit_log("FAIL", audit_msg)
@@ -200,18 +230,63 @@ local function authenticate()
     end
     
     if not client_info then
+        -- Check rate limit for authentication failures
+        -- Limit by both IP and API key to prevent both IP-based and key-based brute force attacks
+        local rate_limit_key_ip = "grpc_apikey_fail_ip:" .. (client_ip or "unknown")
+        local rate_limit_key_apikey = "grpc_apikey_fail_key:" .. api_key
+        
+        -- Check IP-based limit
+        local is_allowed_ip, rate_limit_err_ip = check_auth_failure_limit(rate_limit_key_ip)
+        if not is_allowed_ip then
+            local masked_key = string.sub(api_key, 1, 8) .. "..." .. string.sub(api_key, -4)
+            ngx.log(ngx.WARN, "[AUTH_FAIL] Rate limit exceeded (IP-based) for gRPC API key validation: ip=", client_ip, ", key=", masked_key)
+            
+            local audit_msg = string.format("%s|%s|%s|429|-|-|GRPC_API_KEY|Rate limit exceeded (IP): %s",
+                client_ip or "-",
+                "gRPC",
+                ngx.var.request_uri or "-",
+                rate_limit_err_ip or "Too many failures")
+            write_audit_log("FAIL", audit_msg)
+            
+            ngx.status = 429
+            ngx.header["Content-Type"] = "application/grpc"
+            ngx.header["Grpc-Status"] = "8"  -- RESOURCE_EXHAUSTED
+            ngx.header["Grpc-Message"] = rate_limit_err_ip or "Too many authentication failures. Please try again later."
+            ngx.exit(429)
+        end
+        
+        -- Check API key-based limit
+        local is_allowed_key, rate_limit_err_key = check_auth_failure_limit(rate_limit_key_apikey)
+        if not is_allowed_key then
+            local masked_key = string.sub(api_key, 1, 8) .. "..." .. string.sub(api_key, -4)
+            ngx.log(ngx.WARN, "[AUTH_FAIL] Rate limit exceeded (Key-based) for gRPC API key validation: ip=", client_ip, ", key=", masked_key)
+            
+            local audit_msg = string.format("%s|%s|%s|429|-|-|GRPC_API_KEY|Rate limit exceeded (Key): %s",
+                client_ip or "-",
+                "gRPC",
+                ngx.var.request_uri or "-",
+                rate_limit_err_key or "Too many failures")
+            write_audit_log("FAIL", audit_msg)
+            
+            ngx.status = 429
+            ngx.header["Content-Type"] = "application/grpc"
+            ngx.header["Grpc-Status"] = "8"  -- RESOURCE_EXHAUSTED
+            ngx.header["Grpc-Message"] = rate_limit_err_key or "Too many authentication failures. Please try again later."
+            ngx.exit(429)
+        end
+        
         -- Mask API key for security
         local masked_key = string.sub(api_key, 1, 8) .. "..." .. string.sub(api_key, -4)
         
         -- Log to error.log (for monitoring/alerting)
         ngx.log(ngx.WARN, "[AUTH_FAIL] gRPC API key validation failed: key=", masked_key,
                 ", error=", (err or "unknown error"),
-                ", ip=", ngx.var.remote_addr,
+                ", ip=", client_ip,
                 ", uri=", ngx.var.request_uri)
         
         -- Write to audit.log
         local audit_msg = string.format("%s|%s|%s|401|-|-|GRPC_API_KEY|%s",
-            ngx.var.remote_addr or "-",
+            client_ip or "-",
             "gRPC",
             ngx.var.request_uri or "-",
             err or "Invalid API key")
@@ -279,7 +354,7 @@ local function authenticate()
     end
 
     local audit_msg = string.format("%s|%s|%s|200|%s|%s|GRPC_API_KEY|SUCCESS",
-        ngx.var.remote_addr or "-",
+        client_ip or "-",
         "gRPC",
         ngx.var.request_uri or "-",
         client_info.client_id or "-",
