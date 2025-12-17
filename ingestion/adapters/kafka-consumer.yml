@@ -2,11 +2,28 @@ input:
   label: kafka_logs
   kafka:
     addresses: [ ${KAFKA_BROKERS:localhost:9092} ]
-    topics: ${KAFKA_TOPIC:logs.raw}
+    topics: [ ${KAFKA_TOPIC:logs.raw} ]
     consumer_group: ${KAFKA_CONSUMER_GROUP:benthos-adapter}
     client_id: ${KAFKA_CLIENT_ID:benthos-adapter}
-    start_offset: earliest
+    start_from_oldest: true
     commit_period: 1s
+
+    tls:
+      enabled: true
+      root_cas_file: ${KAFKA_CA_FILE:./ca.pem}
+      # verify server cert
+      skip_cert_verify: false
+
+      client_certs:
+        - cert_file: ${KAFKA_CLIENT_CERT_FILE:./client.crt}
+          key_file:  ${KAFKA_CLIENT_KEY_FILE:./client.key}
+
+# applies back pressure to a processing pipeline when the limit is reached rather than abandon
+rate_limit_resources:
+  - label: log_ingest_limit
+    local:
+      count: ${RATE_LIMIT_COUNT:1000}
+      interval: ${RATE_LIMIT_PERIOD:1s}
 
 pipeline:
   processors:
@@ -14,10 +31,9 @@ pipeline:
       switch:
         - check: env("RATE_LIMIT_ENABLED").or("false") == "true"
           processors:
-            - throttle:
-                count: ${RATE_LIMIT_COUNT:1000}
-                period: ${RATE_LIMIT_PERIOD:1s}
-                drop: true
+            - rate_limit:
+                resource: log_ingest_limit
+
     - label: normalize_kafka
       mapping: |
         let org_id = env("DEFAULT_ORG_ID").or("")

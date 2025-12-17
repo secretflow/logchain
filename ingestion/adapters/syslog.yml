@@ -8,20 +8,29 @@ input:
           network: tcp
           address: ${SYSLOG_TCP_ADDR:0.0.0.0:6514}
 
+# applies back pressure to a processing pipeline when the limit is reached rather than abandon
+rate_limit_resources:
+  - label: log_ingest_limit
+    local:
+      count: ${RATE_LIMIT_COUNT:500}
+      interval: ${RATE_LIMIT_PERIOD:1s}
+
 pipeline:
   processors:
     - label: optional_rate_limit
       switch:
         - check: env("RATE_LIMIT_ENABLED").or("false") == "true"
           processors:
-            - throttle:
-                count: ${RATE_LIMIT_COUNT:1000}
-                period: ${RATE_LIMIT_PERIOD:1s}
-                drop: true
-    - parse_log:
+            - rate_limit:
+                resource: log_ingest_limit
+
+    - label: parse_syslog
+      parse_log:
         format: syslog_rfc5424
         best_effort: true
-    - mapping: |
+
+    - label: normalize_syslog
+      mapping: |
         root.log_content = this.message
         root.client_source_org_id = env("DEFAULT_ORG_ID").or("")
         root.client_timestamp = this.timestamp

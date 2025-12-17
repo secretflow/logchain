@@ -12,16 +12,22 @@ input:
       token: ${AWS_SESSION_TOKEN:}
     delete_objects: ${S3_DELETE_AFTER_READ:false}
 
+# applies back pressure to a processing pipeline when the limit is reached rather than abandon
+rate_limit_resources:
+  - label: log_ingest_limit
+    local:
+      count: ${RATE_LIMIT_COUNT:500}
+      interval: ${RATE_LIMIT_PERIOD:1s}
+
 pipeline:
   processors:
     - label: optional_rate_limit
       switch:
         - check: env("RATE_LIMIT_ENABLED").or("false") == "true"
           processors:
-            - throttle:
-                count: ${RATE_LIMIT_COUNT:1000}
-                period: ${RATE_LIMIT_PERIOD:1s}
-                drop: true
+            - rate_limit:
+                resource: log_ingest_limit
+
     - label: normalize_s3
       mapping: |
         let org_id = env("DEFAULT_ORG_ID").or("")
