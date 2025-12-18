@@ -6,7 +6,7 @@ This directory contains Benthos configuration files and adapters for heterogeneo
 
 According to the design document, these adapters handle protocol conversion for non-HTTP/gRPC data sources:
 
-- **Syslog** - UDP/TCP syslog protocol (port 514)
+- **Syslog** - UDP/TCP syslog protocol (UDP 5514 / TCP 6514)
 - **Kafka Topics** - Direct Kafka topic consumption
 - **S3** - AWS S3 bucket file processing
 - **Other protocols** - Any future heterogeneous data sources
@@ -63,8 +63,9 @@ export KAFKA_BROKERS=localhost:8066
 export KAFKA_TOPIC=yykj-topic-ssl
 export KAFKA_CONSUMER_GROUP=benthos-adapter-kafka
 export KAFKA_CLIENT_ID=kfk
+export KAFKA_TLS_ENABLED=true
 export KAFKA_CA_FILE=/root/logchain/ingestion/adapters/kafka/ssl/cert/ca-cert
-export KAFKA_SERVER_TLS_ENABLED=true
+export SKIP_SERVER_CERT_VERIFY=false
 export KAFKA_CLIENT_CERT_FILE=/root/logchain/ingestion/adapters/kafka/ssl/cert/client/client.crt
 export KAFKA_CLIENT_KEY_FILE=/root/logchain/ingestion/adapters/kafka/ssl/cert/client/client.key
 export RATE_LIMIT_COUNT=

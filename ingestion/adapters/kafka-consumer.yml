@@ -9,12 +9,15 @@ input:
     commit_period: 1s
 
     tls:
-      enabled: ${KAFKA_SERVER_TLS_ENABLED:false}
+      # Whether tls settings are enabled
+      enabled: ${KAFKA_TLS_ENABLED:false}
+      # Config server CA to verify server cert
       root_cas_file: ${KAFKA_CA_FILE:./ca.pem}
-      # verify server cert
-      skip_cert_verify: false
-
+      # Whether to perform server certificate authentication, true mean not verify, false mean verify
+      skip_cert_verify: ${SKIP_SERVER_CERT_VERIFY:false}
+      # Whether to perform client certificate authentication
       client_certs:
+          # Config client crt and key
         - cert_file: ${KAFKA_CLIENT_CERT_FILE:./client.crt}
           key_file:  ${KAFKA_CLIENT_KEY_FILE:./client.key}
 
