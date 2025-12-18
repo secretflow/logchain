@@ -64,6 +64,12 @@ type Store interface {
 	// InsertLogStatusBatch performs bulk insertion of log statuses
 	InsertLogStatusBatch(ctx context.Context, statuses []*LogStatus) error
 
+	// GetLogStatusByRequestID queries log status by request_id
+	GetLogStatusByRequestID(ctx context.Context, requestID string) (*LogStatus, error)
+
+	// GetLogStatusByHash queries log status by log_hash
+	GetLogStatusByHash(ctx context.Context, logHash string) (*LogStatus, error)
+
 	// Close closes the database connection
 	Close()
 }
