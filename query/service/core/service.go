@@ -3,7 +3,6 @@ package core
 import (
 	"context"
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -136,18 +135,12 @@ type OnChainLogData struct {
 }
 
 // parseOnChainData parses blockchain response data in key=value&key=value format
-// ChainMaker returns base64-encoded data like: "org_id=orgA&ts=1761100101&content=Batch log A"
+// ChainMaker SDK GetContractInfo returns the result field as a plain string
 func parseOnChainData(raw string) (*OnChainLogData, error) {
-	// Decode base64-encoded response from ChainMaker
-	decoded, err := base64.StdEncoding.DecodeString(raw)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode base64: %w", err)
-	}
-
 	// Parse key=value pairs (reusing url.ParseQuery for parsing convenience)
-	values, err := url.ParseQuery(string(decoded))
+	values, err := url.ParseQuery(raw)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse query string: %w", err)
+		return nil, fmt.Errorf("failed to parse query string from '%s': %w", raw, err)
 	}
 
 	data := &OnChainLogData{
