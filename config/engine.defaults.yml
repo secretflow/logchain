@@ -2,7 +2,7 @@
 
 # Database Configuration
 database:
-  dsn: "postgres://testuser:secret@localhost:5433/testdb?sslmode=disable"
+  dsn: "postgres://testuser:secret@postgres:5432/testdb?sslmode=disable"
   max_connections: 50
   min_connections: 10
   max_idle_time: 1h
@@ -10,7 +10,7 @@ database:
 
 # Kafka Consumer Configuration
 kafka_consumer:
-  brokers: ["localhost:9092"]
+  brokers: ["kafka:29092"]
   topic: "log_submissions"
   group_id: "notarization_engine_group_1"
   count: 6                    # Number of consumers, should match Kafka partitions
@@ -32,7 +32,7 @@ worker:
 max_task_retries: 3           # Maximum retry attempts per task (business rule)
 
 # Blockchain Client Configuration
-blockchain_client_config_path: "config/blockchain.defaults.yml"
+blockchain_client_config_path: "/app/config/blockchain.defaults.yml"
 
 # Monitoring Configuration
 monitoring:

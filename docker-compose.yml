@@ -95,7 +95,7 @@ services:
       - ./config/engine.defaults.yml:/app/config/engine.defaults.yml
       - ./config/blockchain.defaults.yml:/app/config/blockchain.defaults.yml
       - ./config/clients:/app/config/clients
-      - /home/songquan/chainmaker:/home/songquan/chainmaker:ro
+      - /home/songquan/chainmaker/chainmaker-go:/app/chainmaker-go:ro
     restart: always
 
   query:
@@ -116,5 +116,5 @@ services:
       - ./config/blockchain.defaults.yml:/app/config/blockchain.defaults.yml
       - ./config/clients:/app/config/clients
       - ~/docker-volumes/tlng-query-logs:/var/log/query
-      - /home/songquan/chainmaker:/home/songquan/chainmaker:ro
+      - /home/songquan/chainmaker/chainmaker-go:/app/chainmaker-go:ro
     restart: always
