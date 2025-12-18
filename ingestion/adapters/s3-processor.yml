@@ -2,8 +2,10 @@ input:
   label: s3_logs
   aws_s3:
     bucket: ${S3_BUCKET_NAME:logs-bucket}
-    prefix: ${S3_PREFIX:incoming/}
-    region: ${AWS_REGION:us-east-1}
+    prefix: ${S3_PREFIX:}
+    region: ${AWS_REGION:}
+    endpoint: ${COMPATIBLE_END_POINT:http://localhost:9000}
+    force_path_style_urls: ${FORCE_PATH_STYLE_URLS:false}
     credentials:
       # ak
       id: ${AWS_ACCESS_KEY_ID:}
