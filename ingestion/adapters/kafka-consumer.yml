@@ -39,12 +39,10 @@ pipeline:
 
     - label: normalize_kafka
       mapping: |
-        let org_id = env("DEFAULT_ORG_ID").or("")
         let ts = now()
         root.log_content = content().string()
-        root.client_source_org_id = $org_id
+        root.client_source_org_id = env("DEFAULT_ORG_ID").or("")
         root.client_timestamp = $ts.format_timestamp("2006-01-02T15:04:05.000000000Z07:00")
-        meta.source = "kafka"
 
 output:
   http_client:
