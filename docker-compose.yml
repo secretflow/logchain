@@ -16,7 +16,7 @@ services:
     depends_on:
       - zookeeper
     ports:
-      - "9092:9092"
+      - "9093:9092"
       - "29092:29092"
     environment:
       KAFKA_BROKER_ID: 1
@@ -60,6 +60,44 @@ services:
       - ./scripts/db:/scripts
     restart: always
 
+  ingestion:
+    build:
+      context: .
+      dockerfile: cmd/ingestion/Dockerfile
+    container_name: ingestion-service-tlng
+    depends_on:
+      - postgres
+      - kafka
+      - kafka-init
+    ports:
+      - "8091:8091"  # HTTP
+      - "50051:50051"  # gRPC
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./config/ingestion.defaults.yml:/app/config/ingestion.defaults.yml
+    restart: always
+
+  engine:
+    build:
+      context: .
+      dockerfile: cmd/engine/Dockerfile
+    container_name: engine-service-tlng
+    depends_on:
+      - postgres
+      - kafka
+      - kafka-init
+    environment:
+      - TZ=Asia/Shanghai
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./config/engine.defaults.yml:/app/config/engine.defaults.yml
+      - ./config/blockchain.defaults.yml:/app/config/blockchain.defaults.yml
+      - ./config/clients:/app/config/clients
+      - /home/songquan/chainmaker:/home/songquan/chainmaker:ro
+    restart: always
+
   query:
     build:
       context: .
@@ -68,11 +106,15 @@ services:
     depends_on:
       - postgres
     ports:
-      - "8082:8082"
+      - "8083:8083"
     environment:
       - TZ=Asia/Shanghai
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./config/query.defaults.yml:/app/config/query.defaults.yml
+      - ./config/blockchain.defaults.yml:/app/config/blockchain.defaults.yml
       - ./config/clients:/app/config/clients
       - ~/docker-volumes/tlng-query-logs:/var/log/query
+      - /home/songquan/chainmaker:/home/songquan/chainmaker:ro
     restart: always

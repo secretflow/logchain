@@ -15,8 +15,8 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the query service
-RUN CGO_ENABLED=1 GOOS=linux go build -o query-service ./cmd/query
+# Build the ingestion service
+RUN CGO_ENABLED=1 GOOS=linux go build -o ingestion-service ./cmd/ingestion
 
 # Runtime stage
 FROM debian:bookworm-slim
@@ -32,18 +32,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # Copy binary from builder
-COPY --from=builder /build/query-service .
+COPY --from=builder /build/ingestion-service .
 
 # Copy configuration files
-COPY config/query.defaults.yml ./config/
-COPY config/blockchain.defaults.yml ./config/
-COPY config/clients/ ./config/clients/
+COPY config/ingestion.defaults.yml ./config/
 
-# Create log directory
-RUN mkdir -p /var/log/query
-
-# Expose HTTP port
-EXPOSE 8083
+# Expose HTTP and gRPC ports
+EXPOSE 8091 50051
 
 # Run the service
-CMD ["./query-service"]
+CMD ["./ingestion-service"]
