@@ -173,6 +173,11 @@ local function authenticate()
         ngx.exit(403)
     end
     
+    -- Set headers for backend services
+    ngx.req.set_header("X-Cert-Subject", client_cert_dn or "-")
+    ngx.req.set_header("X-Member-ID", member_id or "-")
+    ngx.req.set_header("X-Auth-Method", "mtls")
+    
     -- Write successful authentication to audit.log only (not error.log)
     local audit_msg = string.format("%s|%s|%s|200|-|%s|mTLS|SUCCESS|%s|%s",
         client_ip or "-",

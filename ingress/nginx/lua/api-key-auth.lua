@@ -399,6 +399,7 @@ local function authenticate()
     if client_info.org_id then
         ngx.req.set_header("X-Client-Org-ID", client_info.org_id)
     end
+    ngx.req.set_header("X-Auth-Method", "api-key")
 
     local audit_msg = string.format("%s|%s|%s|200|%s|%s|API_KEY|SUCCESS",
         client_ip or "-",
