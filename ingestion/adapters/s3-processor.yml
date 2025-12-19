@@ -13,6 +13,8 @@ input:
       secret: ${AWS_SECRET_ACCESS_KEY:}
       token: ${AWS_SESSION_TOKEN:}
     delete_objects: ${S3_DELETE_AFTER_READ:false}
+    scanner:
+      lines: { }
 
 # applies back pressure to a processing pipeline when the limit is reached rather than abandon
 rate_limit_resources:

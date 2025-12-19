@@ -83,21 +83,21 @@ export HTTP_BATCH_PERIOD=
 
 ### S3 适配器
 ```bash
-export S3_BUCKET_NAME=
+export S3_BUCKET_NAME=my-container-bucket
 export S3_PREFIX=
-export AWS_REGION=
-export COMPATIBLE_END_POINT=
-export FORCE_PATH_STYLE_URLS=
-export AWS_ACCESS_KEY_ID=
-export AWS_SECRET_ACCESS_KEY=
+export AWS_REGION=local
+export COMPATIBLE_END_POINT=http://127.0.0.1:9000
+export FORCE_PATH_STYLE_URLS=false
+export AWS_ACCESS_KEY_ID=minio
+export AWS_SECRET_ACCESS_KEY=redpandaTieredStorage7
 export AWS_SESSION_TOKEN=
-export S3_DELETE_AFTER_READ=
+export S3_DELETE_AFTER_READ=false
 export RATE_LIMIT_COUNT=
 export RATE_LIMIT_PERIOD=
-export RATE_LIMIT_ENABLED=
-export DEFAULT_ORG_ID=
-export INGESTION_ENDPOINT=
-export INGESTION_API_KEY=
+export RATE_LIMIT_ENABLED=true
+export DEFAULT_ORG_ID=dkbmtb
+export INGESTION_ENDPOINT=http://127.0.0.1:8093/v1/logs
+export INGESTION_API_KEY=dkbmtb
 export HTTP_BATCH_COUNT=
 export HTTP_BATCH_PERIOD=
   
