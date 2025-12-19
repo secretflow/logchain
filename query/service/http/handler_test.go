@@ -45,12 +45,6 @@ func TestGetStatusByRequestID_PathTraversal(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, tt.path, nil)
-			
-			// Add mock auth context for valid ID test
-			if tt.expectedStatus == http.StatusUnauthorized {
-				// Don't add auth context to trigger auth failure
-			}
-
 			w := httptest.NewRecorder()
 			handler.GetStatusByRequestID(w, req)
 
