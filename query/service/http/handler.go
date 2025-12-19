@@ -2,6 +2,7 @@ package http
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -166,15 +167,17 @@ func writeJSON(w http.ResponseWriter, statusCode int, data interface{}) {
 	json.NewEncoder(w).Encode(data)
 }
 
-// handleServiceError maps service errors to HTTP status codes
+// handleServiceError maps service errors to HTTP status codes using typed error checking
 func handleServiceError(w http.ResponseWriter, err error) {
 	switch {
-	case strings.Contains(err.Error(), "not found"):
+	case errors.Is(err, core.ErrLogNotFound):
 		writeError(w, http.StatusNotFound, err.Error())
-	case strings.Contains(err.Error(), "unauthorized"):
+	case errors.Is(err, core.ErrPermissionDenied):
 		writeError(w, http.StatusForbidden, err.Error())
-	case strings.Contains(err.Error(), "invalid"):
+	case errors.Is(err, core.ErrInvalidRequest):
 		writeError(w, http.StatusBadRequest, err.Error())
+	case errors.Is(err, core.ErrBlockchainError):
+		writeError(w, http.StatusInternalServerError, err.Error())
 	default:
 		writeError(w, http.StatusInternalServerError, "internal server error")
 	}
