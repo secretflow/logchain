@@ -11,8 +11,6 @@ import (
 
 	blockchain "tlng/blockchain/client"
 	"tlng/storage/store"
-
-	"github.com/jackc/pgx/v4"
 )
 
 // Service provides core query business logic
@@ -41,7 +39,7 @@ func (s *Service) GetStatusByRequestID(ctx context.Context, requestID, callerOrg
 	// Query from State DB
 	status, err := s.store.GetLogStatusByRequestID(ctx, requestID)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, store.ErrLogNotFound) {
 			return nil, ErrLogNotFound
 		}
 		s.logger.Printf("Failed to query log status by request_id=%s: %v", requestID, err)
@@ -71,7 +69,7 @@ func (s *Service) QueryByContent(ctx context.Context, logContent, callerOrgID st
 	// Query from State DB
 	status, err := s.store.GetLogStatusByHash(ctx, logHash)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, store.ErrLogNotFound) {
 			return nil, ErrLogNotFound
 		}
 		s.logger.Printf("Failed to query log status by log_hash=%s: %v", logHash, err)

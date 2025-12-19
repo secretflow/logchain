@@ -2,7 +2,13 @@ package store
 
 import (
 	"context"
+	"errors"
 	"time"
+)
+
+// Store-level errors
+var (
+	ErrLogNotFound = errors.New("log not found")
 )
 
 // Status defines the task status enum type

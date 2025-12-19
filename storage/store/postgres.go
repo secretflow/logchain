@@ -434,7 +434,7 @@ func (s *PostgresStore) GetLogStatusByRequestID(ctx context.Context, requestID s
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("log not found with request_id=%s: %w", requestID, err)
+			return nil, ErrLogNotFound
 		}
 		return nil, fmt.Errorf("failed to query log status by request_id: %w", err)
 	}
@@ -471,7 +471,7 @@ func (s *PostgresStore) GetLogStatusByHash(ctx context.Context, logHash string) 
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("log not found with log_hash=%s: %w", logHash, err)
+			return nil, ErrLogNotFound
 		}
 		return nil, fmt.Errorf("failed to query log status by log_hash: %w", err)
 	}
