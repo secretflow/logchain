@@ -47,7 +47,7 @@ func main() {
 	defer dbStore.Close()
 
 	// 3. Initialize Blockchain Client (conditionally)
-	var bcClient *blockchain.Client
+	var bcClient blockchain.BlockchainClient
 	if queryCfg.Blockchain.Enabled {
 		logger.Println("Initializing blockchain client...")
 		bcClient, err = blockchain.NewBlockchainClientFromFile(
@@ -71,7 +71,7 @@ func main() {
 	mux := http.NewServeMux()
 
 	// Register query API routes
-	handler := queryhttp.NewHandler(queryService)
+	handler := queryhttp.NewHandler(queryService, logger)
 	handler.RegisterRoutes(mux)
 
 	// Add health check endpoint
