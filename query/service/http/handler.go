@@ -47,6 +47,12 @@ func (h *Handler) GetStatusByRequestID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate request_id to prevent path traversal
+	if strings.Contains(requestID, "..") || strings.Contains(requestID, "/") {
+		writeError(w, http.StatusBadRequest, "invalid request_id: path traversal characters not allowed")
+		return
+	}
+
 	// Extract auth context
 	authCtx := auth.ExtractAuthContext(r)
 	if authCtx == nil || authCtx.OrgID == "" {
@@ -124,6 +130,12 @@ func (h *Handler) AuditLogByHash(w http.ResponseWriter, r *http.Request) {
 	logHash := strings.TrimSpace(path)
 	if logHash == "" {
 		writeError(w, http.StatusBadRequest, "missing log_hash")
+		return
+	}
+
+	// Validate log_hash to prevent path traversal
+	if strings.Contains(logHash, "..") || strings.Contains(logHash, "/") {
+		writeError(w, http.StatusBadRequest, "invalid log_hash: path traversal characters not allowed")
 		return
 	}
 
