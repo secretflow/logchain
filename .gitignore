@@ -13,3 +13,5 @@ bin/
 benchmark/
 
 .cluade/
+
+.vscode/

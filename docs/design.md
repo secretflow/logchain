@@ -135,38 +135,57 @@
 
 #### A. Query Service
 
-**Component**: `Go` service with `gRPC` and `HTTP`/`REST` interfaces  
+**Component**: `Go` service with HTTP/REST interfaces  
 **Responsibilities**: Provides unified multi-dimensional query interfaces.
+
+**Architecture**:
+```
+Nginx Gateway (Authentication)
+    ↓
+HTTP Handlers (query/service/http/)
+    ↓
+Core Service Layer (query/service/core/)
+    ↓
+├─→ Store Interface (storage/store/) - for API 1 & 2
+└─→ Blockchain Client (blockchain/client/) - for API 3
+```
 
 **Key Workflows**:
 * Receives query requests forwarded from API Gateway (already authenticated)
-* Selects data source based on query type (`State DB` or blockchain)
-* Obtains user identity and permission information from request context
-* Performs permission checks and access control
-* Returns formatted query results
+* Extracts authentication context from HTTP headers (set by Nginx)
+* Performs permission checks based on user identity and query type
+* Routes to appropriate data source (State DB or Blockchain)
+* Returns formatted query results with source indication
 
-**Note**: Query layer trusts requests from API Gateway, no need for re-authentication, only needs permission control based on passed identity information.
+**Note**: Query layer trusts requests from API Gateway, no need for re-authentication, only performs permission control based on passed identity information.
 
 #### B. Query API Interface Details
 
 **API 1: Task Status Query (for API callers)**
-* **Interface**: `GET /status/{request_id}`
+* **Interface**: `GET /v1/query/status/{request_id}`
 * **Authentication**: API Gateway authenticates via `API Key`
+* **Authentication Headers**: `X-Auth-Method: api-key`, `X-API-Client-ID`, `X-Client-Org-ID`
 * **Permission Scope**: Can only query status of self-submitted logs
+* **Data Source**: State DB (PostgreSQL)
 * **Purpose**: Allows "active push" clients to query attestation status using returned `request_id`
 
 **API 2: Content-Based Reverse Query (for non-API users)**
-* **Interface**: `POST /query_by_content`
+* **Interface**: `POST /v1/query_by_content`
 * **Authentication**: API Gateway authenticates via `API Key`
+* **Authentication Headers**: `X-Auth-Method: api-key`, `X-API-Client-ID`, `X-Client-Org-ID`
 * **Permission Scope**: Can only query logs produced by own system
 * **Request Body**: `{"log_content": "your raw log string"}`
+* **Data Source**: State DB (PostgreSQL) - queries by computed SHA-256 hash
 * **Purpose**: Allows "passive ingestion" (`Syslog`, `Kafka`) users to reverse lookup on-chain credentials using log content
 
 **API 3: On-Chain Public Audit (for consortium members)**
-* **Interface**: `GET /log/by_tx/{tx_hash}` or `GET /log/{on_chain_log_id}`
+* **Interface**: `GET /v1/audit/log/{log_hash}`
 * **Authentication**: API Gateway authenticates via `mTLS` + `IP` whitelist
-* **Permission Scope**: Can audit all on-chain log data
-* **Purpose**: Satisfies "transparent attestation" business requirements, allowing consortium members to audit on-chain content
+* **Authentication Headers**: `X-Auth-Method: mtls`, `X-Cert-Subject`, `X-Member-ID`
+* **Permission Scope**: Can audit all on-chain log data (no org restriction)
+* **Data Source**: Blockchain (ChainMaker smart contract query)
+* **Purpose**: Satisfies "transparent attestation" business requirements, allowing consortium members to verify on-chain content
+* **Note**: Uses `log_hash` instead of `tx_hash` for simplified audit interface
 
 ---
 
