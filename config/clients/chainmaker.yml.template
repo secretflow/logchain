@@ -1,0 +1,66 @@
+# === ChainMaker Blockchain Configuration Template ===
+# This file contains ChainMaker-specific configuration
+# Environment variables will be substituted at runtime
+
+# === SDK Connection Required ===
+chain_id: "chain1"
+org_id: "wx-org1.chainmaker.org"
+
+# TLS connection credentials (please use absolute paths or paths relative to executable)
+user_key_path: "/app/chainmaker-go/build/crypto-config/wx-org1.chainmaker.org/user/client1/client1.sign.key"
+user_cert_path: "/app/chainmaker-go/build/crypto-config/wx-org1.chainmaker.org/user/client1/client1.sign.crt"
+
+# Transaction signing credentials
+user_sign_key_path: "/app/chainmaker-go/build/crypto-config/wx-org1.chainmaker.org/user/client1/client1.sign.key"
+user_sign_cert_path: "/app/chainmaker-go/build/crypto-config/wx-org1.chainmaker.org/user/client1/client1.sign.crt"
+
+# Node list - addresses will be replaced from environment variables
+nodes:
+  - address: "${CHAINMAKER_NODE_HOST}:${CHAINMAKER_NODE_PORT_1}"
+    conn_count: 10
+    use_tls: true
+    tls_host_name: "chainmaker.org"
+    ca_paths:
+      - "/app/chainmaker-go/build/crypto-config/wx-org1.chainmaker.org/ca"
+      - "/app/chainmaker-go/build/crypto-config/wx-org2.chainmaker.org/ca"
+      - "/app/chainmaker-go/build/crypto-config/wx-org3.chainmaker.org/ca"
+      - "/app/chainmaker-go/build/crypto-config/wx-org4.chainmaker.org/ca"
+  - address: "${CHAINMAKER_NODE_HOST}:${CHAINMAKER_NODE_PORT_2}"
+    conn_count: 10
+    use_tls: true
+    tls_host_name: "chainmaker.org"
+    ca_paths:
+      - "/app/chainmaker-go/build/crypto-config/wx-org1.chainmaker.org/ca"
+      - "/app/chainmaker-go/build/crypto-config/wx-org2.chainmaker.org/ca"
+      - "/app/chainmaker-go/build/crypto-config/wx-org3.chainmaker.org/ca"
+      - "/app/chainmaker-go/build/crypto-config/wx-org4.chainmaker.org/ca"
+  - address: "${CHAINMAKER_NODE_HOST}:${CHAINMAKER_NODE_PORT_3}"
+    conn_count: 10
+    use_tls: true
+    tls_host_name: "chainmaker.org"
+    ca_paths:
+      - "/app/chainmaker-go/build/crypto-config/wx-org1.chainmaker.org/ca"
+      - "/app/chainmaker-go/build/crypto-config/wx-org2.chainmaker.org/ca"
+      - "/app/chainmaker-go/build/crypto-config/wx-org3.chainmaker.org/ca"
+      - "/app/chainmaker-go/build/crypto-config/wx-org4.chainmaker.org/ca"
+  - address: "${CHAINMAKER_NODE_HOST}:${CHAINMAKER_NODE_PORT_4}"
+    conn_count: 10
+    use_tls: true
+    tls_host_name: "chainmaker.org"
+    ca_paths:
+      - "/app/chainmaker-go/build/crypto-config/wx-org1.chainmaker.org/ca"
+      - "/app/chainmaker-go/build/crypto-config/wx-org2.chainmaker.org/ca"
+      - "/app/chainmaker-go/build/crypto-config/wx-org3.chainmaker.org/ca"
+      - "/app/chainmaker-go/build/crypto-config/wx-org4.chainmaker.org/ca"
+
+# === Business Logic Required ===
+contract_name: "log_store_contract"
+submit_log_method_name: "submit_log"
+param_key_log_hash: "log_hash"
+param_key_log_content: "log_content"
+param_key_sender_org_id: "sender_org_id"
+param_key_timestamp: "timestamp"
+find_log_by_hash_method_name: "find_log_by_hash"
+submit_event_topic: "log_submitted"
+submit_logs_batch_method_name: "submit_logs_batch"
+param_key_logs_json: "logs_json"
