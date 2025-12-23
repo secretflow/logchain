@@ -4,8 +4,8 @@
 
 | Layer | Core Component | Primary Responsibilities | Tech Stack |
 |------|----------|----------|--------|
-| **Ingress Layer** | `API Gateway` | Traffic entry and routing | `Traefik`/`Nginx` |
-| **Ingestion Layer** | `Benthos` Adapters | Heterogeneous protocol conversion and data normalization | `Benthos` |
+| **Ingress Layer** | `API Gateway` | Traffic entry and routing | `Nginx + OpenResty` |
+| **Ingestion Layer** | `Benthos` Adapters | Heterogeneous protocol conversion and data normalization | `Redpanda Connect` |
 | **Ingestion Layer** | Log Ingestion Service | Log reception, hash calculation, queue insertion | `Go` + `gRPC`/`HTTP` |
 | **Processing Layer** | Blockchain Processing Service | Message queue consumption and blockchain submission | `Go` + `Kafka` |
 | **Storage Layer** | State Database | Task lifecycle tracking | `PostgreSQL` |
@@ -22,18 +22,21 @@
 
 ### 1. Ingress Layer - Traffic Entry and Routing
 
-**Component**: `API Gateway` (`Traefik` / `Nginx Ingress`)  
-**Responsibilities**: `TLS` termination, unified authentication, standard protocol routing, load balancing
+**Component**: `API Gateway` (Nginx with OpenResty for Lua scripting)  
+**Responsibilities**: `TLS` termination, unified authentication, standard protocol routing, load balancing, rate limiting, audit logging
 
 **Key Workflows**:
-* **`TLS` Termination**: Handles all `HTTPS` requests, decrypts traffic, allowing internal services to operate without dealing with `SSL`/`TLS` certificates.
-* **Unified Authentication**: Authenticates and authorizes all external requests:
-    * **`API Key`**: Validates API client identity
-    * **`mTLS` + `IP` Whitelist**: Validates consortium member identity
-    * Failed authentication results in immediate rejection; successful authentication passes user identity to backend services via HTTP Headers
+* **`TLS` Termination**: Handles all `HTTPS` requests (port 443) and gRPC (port 50052), decrypts traffic, allowing internal services to operate without dealing with `SSL`/`TLS` certificates.
+* **Unified Authentication**: Lua-based authentication in Nginx:
+    * **`API Key`**: File/Redis/external service-based validation (configured via `API_KEY_AUTH_METHOD`)
+    * **`mTLS` + `IP` Whitelist**: Dual authentication for consortium members with certificate validation and IP whitelist checking
+    * Failed authentication results in immediate rejection; successful authentication passes identity via HTTP headers (`X-API-Client-ID`, `X-Client-Org-ID`, `X-Auth-Method`, etc.)
+* **Rate Limiting**: Configurable per-endpoint limits (100 req/s for submission, 50 req/s for query, 20 req/s for audit)
 * **Standard Protocol Routing**:
-    * **`HTTP`/`gRPC` Paths**: `POST /v1/logs` or `gRPC SubmitLog` → Forwarded directly to Log Ingestion Service
-    * **Query Paths**: `GET /status/...`, `POST /query_by_content`, `GET /log/by_tx/...` etc. → Forwarded to Query Layer
+    * **`HTTP` Paths**: `POST /v1/logs` → Ingestion Service HTTP endpoint (port 8091)
+    * **`gRPC` Paths**: `SubmitLog` → Ingestion Service gRPC endpoint (port 50051)
+    * **Query Paths**: `GET /v1/query/status/{request_id}`, `POST /v1/query_by_content` → Query Service (port 8083)
+    * **Audit Paths**: `GET /v1/audit/log/{log_hash}` → Query Service
 
 ---
 
@@ -41,22 +44,22 @@
 
 #### A. Adapters - Heterogeneous Protocol Conversion
 
-**Component**: `Benthos` (implemented via `Redpanda Connect` configuration in `ingestion/adapters/`)  
-**Responsibilities**: Heterogeneous protocol adapter that directly receives external heterogeneous protocol data and converts it to a unified format.
+**Component**: `Redpanda Connect` (Benthos-compatible stream processor)  
+**Responsibilities**: Heterogeneous protocol adapter that directly receives external protocol data and converts it to a unified format.
 
 **Key Workflows**:
 * Directly receives external heterogeneous protocol data such as `Syslog`, `Kafka`, `S3`
 * Performs protocol parsing and data normalization (timestamp formatting, field mapping, etc.)
-* Batch processing and buffering optimization (aggregates small requests to improve processing efficiency)
-* Forwards processed logs uniformly to Log Ingestion Service
+* Optional rate limiting with configurable thresholds
+* Forwards processed logs uniformly to Log Ingestion Service via `POST /v1/logs`
 
 **Implementation Status & Adapter Types**:
-* ✅ Implemented via `redpanda-data/connect` (Benthos-compatible) with configuration files under `ingestion/adapters/`
-* Supported adapters in the first phase:
-  * **Syslog Adapter (`syslog.yml`)**: Listens on UDP `5514` / TCP `6514`, parses syslog messages, maps raw message body into `log_content`, and forwards to `POST /v1/logs`
-  * **Kafka Adapter (`kafka-consumer.yml`)**: Consumes from configured Kafka topics (supporting TLS/mTLS), normalizes messages, and forwards to Log Ingestion Service
-  * **S3 Adapter (`s3-processor.yml`)**: Connects to `AWS S3` or S3-compatible storage (e.g. MinIO), reads objects line-by-line, wraps each line as `log_content`, and sends batched HTTP requests to Log Ingestion Service
-* All adapters support optional rate limiting (`RATE_LIMIT_COUNT` / `RATE_LIMIT_PERIOD` / `RATE_LIMIT_ENABLED`)
+* Implemented using `redpanda-data/connect` Docker image
+* Three adapter configurations:
+  * **Syslog Adapter**: Listens on UDP `5514` and TCP `6514`, parses RFC5424 format, forwards to Ingestion Service
+  * **Kafka Adapter**: Consumes from configurable Kafka topics, supports TLS/mTLS authentication
+  * **S3 Adapter**: Connects to AWS S3 or S3-compatible storage (MinIO), reads objects line-by-line
+* All adapters support optional rate limiting and environment variable configuration
 
 **Security Access Control**:
 * **S3 Access Control**: Platform provides dedicated S3 buckets, controls client write permissions through IAM policies and pre-signed URLs
@@ -150,12 +153,12 @@
 ```
 Nginx Gateway (Authentication)
     ↓
-HTTP Handlers (query/service/http/)
+HTTP Handlers
     ↓
-Core Service Layer (query/service/core/)
+Core Service Layer
     ↓
-├─→ Store Interface (storage/store/) - for API 1 & 2
-└─→ Blockchain Client (blockchain/client/) - for API 3
+├─→ Database Store - for API 1 & 2
+└─→ Blockchain Client - for API 3
 ```
 
 **Key Workflows**:
@@ -165,35 +168,35 @@ Core Service Layer (query/service/core/)
 * Routes to appropriate data source (State DB or Blockchain)
 * Returns formatted query results with source indication
 
-**Note**: Query layer trusts requests from API Gateway, no need for re-authentication, only performs permission control based on passed identity information.
+**Note**: Query layer trusts requests from API Gateway (Nginx), authentication is already completed. Query service only extracts auth context from HTTP headers and performs permission checks.
 
 #### B. Query API Interface Details
 
 **API 1: Task Status Query (for API callers)**
 * **Interface**: `GET /v1/query/status/{request_id}`
-* **Authentication**: API Gateway authenticates via `API Key`
+* **Authentication**: Nginx validates via `API Key`
 * **Authentication Headers**: `X-Auth-Method: api-key`, `X-API-Client-ID`, `X-Client-Org-ID`
-* **Permission Scope**: Can only query status of self-submitted logs
+* **Permission Scope**: Can only query logs submitted by own organization
 * **Data Source**: State DB (PostgreSQL)
 * **Purpose**: Allows "active push" clients to query attestation status using returned `request_id`
 
 **API 2: Content-Based Reverse Query (for non-API users)**
 * **Interface**: `POST /v1/query_by_content`
-* **Authentication**: API Gateway authenticates via `API Key`
+* **Authentication**: Nginx validates via `API Key`
 * **Authentication Headers**: `X-Auth-Method: api-key`, `X-API-Client-ID`, `X-Client-Org-ID`
-* **Permission Scope**: Can only query logs produced by own system
+* **Permission Scope**: Can only query logs from own organization
 * **Request Body**: `{"log_content": "your raw log string"}`
-* **Data Source**: State DB (PostgreSQL) - queries by computed SHA-256 hash
-* **Purpose**: Allows "passive ingestion" (`Syslog`, `Kafka`) users to reverse lookup on-chain credentials using log content
+* **Process**: Service computes SHA-256 hash and queries by hash
+* **Data Source**: State DB (PostgreSQL)
+* **Purpose**: Allows "passive ingestion" (`Syslog`, `Kafka`) users to reverse lookup on-chain credentials
 
 **API 3: On-Chain Public Audit (for consortium members)**
 * **Interface**: `GET /v1/audit/log/{log_hash}`
-* **Authentication**: API Gateway authenticates via `mTLS` + `IP` whitelist
+* **Authentication**: Nginx validates via `mTLS` + `IP` whitelist
 * **Authentication Headers**: `X-Auth-Method: mtls`, `X-Cert-Subject`, `X-Member-ID`
-* **Permission Scope**: Can audit all on-chain log data (no org restriction)
-* **Data Source**: Blockchain (ChainMaker smart contract query)
-* **Purpose**: Satisfies "transparent attestation" business requirements, allowing consortium members to verify on-chain content
-* **Note**: Uses `log_hash` instead of `tx_hash` for simplified audit interface
+* **Permission Scope**: Can audit all on-chain log data (no organization restriction)
+* **Data Source**: Blockchain (ChainMaker)
+* **Purpose**: Allows consortium members to verify on-chain content and satisfy transparent attestation requirements
 
 ---
 
@@ -224,9 +227,9 @@ Query Client → [Ingress Layer: TLS termination + authentication + routing] →
 |----------|----------|----------|----------|
 | **API Clients** | `API Key` | Log submission, status query | Business system integration |
 | **Non-API Users** | `API Key` | Content-based reverse query | `Syslog`/`Kafka` users |
-| **Consortium Members** | `mTLS`/`IP` whitelist | On-chain data audit | Regulators, auditors |
-| **Internal Services** | `Service Token` | Inter-service communication | `Kafka`-`DB` etc. |
-| **Heterogeneous Protocol Sources** | `Network/IP control` | Benthos direct access | `Syslog`/`Kafka`/`S3` clients |
+| **Consortium Members** | `mTLS`+`IP` whitelist | On-chain data audit | Regulators, auditors |
+| **Internal Services** | Service mesh/network isolation | Inter-service communication | `Ingestion`-`Engine`-`Query` |
+| **Heterogeneous Protocol Sources** | Network/IP control + Rate limiting | Benthos direct access | `Syslog`/`Kafka`/`S3` clients |
 
 ---
 
@@ -234,53 +237,53 @@ Query Client → [Ingress Layer: TLS termination + authentication + routing] →
 
 #### 2.1 API Key Management (Client Authentication)
 
-**Applicable Scope**: Log Ingestion Service, first two `APIs` of Query Layer  
+**Applicable Scope**: Log Ingestion Service, Query APIs
 
 **Management Mechanism**:
-* **Key Generation:** System administrator generates unique `API Key` for each client
-* **Permission Binding:** `API Key` is bound to specific organization or system identifier
-* **Access Control:** Supports separation of read/write permissions (submission vs query)
-* **Key Rotation:** Supports periodic key rotation without affecting business operations
+* **Storage Methods**: File-based (development), Redis-based (production), or external auth service
+* **Key Structure**: Contains `client_id`, `org_id`, `status`, `permissions`, and expiration
+* **Validation**: Nginx Lua scripts validate keys and inject identity headers
+* **Header Injection**: Sets `X-API-Client-ID`, `X-Client-Org-ID`, `X-Auth-Method: api-key`
 
 **Security Measures:**
-* `API Keys` are stored as hashes, plaintext only used for verification
-* Request signature verification: ensures requests are not tampered with
-* Rate limiting: prevents `API` abuse and `DDoS` attacks
+* Rate limiting per endpoint
+* Audit logging of authentication attempts
+* Support for key rotation and expiration
 
 #### 2.2 Consortium Member Authentication (mTLS + IP Whitelist)
 
-**Applicable Scope**: Third `API` of Query Layer (on-chain audit)  
+**Applicable Scope**: Query Layer audit API (`/v1/audit/log/{log_hash}`)
 
 **Dual Authentication Mechanism:**
 
 **`mTLS` Certificate Authentication:**
-* Each consortium member is issued a client certificate
-* Certificates are signed by consortium `CA` authority
-* Supports certificate revocation mechanism
+* Nginx validates client certificates against consortium CA
+* Certificate subject passed via `X-Cert-Subject` header
+* Supports certificate revocation and rotation
 
 **`IP` Address Whitelist:**
-* Serves as supplementary protection to `mTLS`
-* Only allows access from consortium members' specified `IPs`
-* Supports `CIDR` subnet configuration
+* Configured per consortium member with allowed IP addresses
+* Lua script validates client IP against member's whitelist
+* Member ID passed via `X-Member-ID` header
 
-#### 2.3 Internal Service Authentication (Service Token)
+#### 2.3 Internal Service Authentication
 
-**Applicable Scope**: Inter-service communication (Processing Layer → State Database, Processing Layer → Blockchain, etc.)
+**Applicable Scope**: Inter-service communication
 
-**Authentication Mechanism**:
-* `JWT Token` contains service identifier and permission scope
-* `Token` has short validity period, automatically refreshed periodically
-* Role-Based Access Control (`RBAC`)
+**Security Mechanism**:
+* Services communicate within isolated Docker network
+* Internal ports not exposed externally
+* Database credentials via environment variables
 
 #### 2.4 Heterogeneous Protocol Source Access Control
 
-**Applicable Scope**: Direct access to Benthos adapters (Syslog, Kafka, S3, etc.)
+**Applicable Scope**: Benthos adapters (Syslog, Kafka, S3)
 
 **Security Mechanisms**:
-* **Network Layer Control**: Restricts access sources through firewalls and VPC network isolation
-* **IP Whitelist**: Only allows pre-configured client IP addresses to access
-* **Protocol Layer Validation**: Performs basic format and integrity validation for each protocol type
-* **Rate Limiting**: Traffic control based on source IP to prevent data flooding attacks
+* **Network Layer Control**: Docker network isolation with selective port exposure
+* **Rate Limiting**: Configurable per adapter to prevent data flooding
+* **Protocol Validation**: Format validation and integrity checks for each protocol
+* **Organization Tagging**: Default organization ID injected for tracking
 
 ---
 
@@ -300,26 +303,35 @@ Query Client → [Ingress Layer: TLS termination + authentication + routing] →
 
 #### 4.1 Unified Authentication Gateway
 
-All external requests via `HTTPS` must be authenticated through `Ingress Layer`. Failed authentication results in immediate rejection without passing to backend services. Heterogeneous protocol sources access directly through `Benthos`, using network layer security controls.
+All external HTTPS/gRPC requests pass through Nginx authentication:
+* API Key routes validated by Lua scripts, inject identity headers
+* mTLS routes validate certificates and IP whitelist
+* Failed authentication returns 401/403 immediately with audit logging
+* Successful authentication forwards request with identity headers
+
+Benthos adapters bypass Nginx, using network isolation and rate limiting.
 
 #### 4.2 Authentication Context Propagation
 
-After successful authentication, API Gateway passes user identity and permission information to backend services via HTTP Headers. Backend services trust this information without re-authentication, only performing permission checks.
+Nginx injects identity via HTTP headers after successful authentication:
+* **API Key**: `X-Auth-Method: api-key`, `X-API-Client-ID`, `X-Client-Org-ID`
+* **mTLS**: `X-Auth-Method: mtls`, `X-Cert-Subject`, `X-Member-ID`
+
+Backend services extract headers and perform permission checks without re-authentication.
 
 #### 4.3 Permission Control
 
-Backend services perform fine-grained permission control based on passed identity information:
-* **Query Layer**: Checks if user has permission to query specific log data
-* **Log Ingestion Service**: Performs resource quota management based on user identity
-* **Internal Inter-Service**: Implements trust through internal network isolation
-* **Benthos Adapters**: Implements secure access based on network layer control and protocol validation
+Backend services perform permission control based on authentication headers:
+* **Ingestion Service**: Associates logs with organization from `X-Client-Org-ID`
+* **Query Service API Key routes**: Filters results by organization (users see own logs only)
+* **Query Service mTLS routes**: No organization filtering (consortium members see all logs)
 
 #### 4.4 Audit Logging
 
-All authentication events (success/failure) and critical operations must be logged, including:
-* Timestamp, client `IP`, user identifier
-* Request type, resource, result
-* Failure reason (if applicable)
+All authentication and critical operations are logged:
+* **Authentication Events**: Success/failure with timestamp, client IP, auth method, client ID
+* **Access Logs**: Standard format with custom fields for client identifiers
+* **Error Logs**: Authentication failures, rate limit violations, TLS errors
 
 #### 4.5 Security Configuration Requirements
 
