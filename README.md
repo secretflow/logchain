@@ -1,136 +1,161 @@
-# Trusted Log Attestation System (可信日志存证系统)
+# Trusted Log Attestation System
 
-A system for transparently attesting logs on a blockchain with multi-dimensional verifiability.
+A blockchain-based log attestation system providing transparent, immutable, and multi-dimensional verifiable log storage.
 
-## 📚 Documentation Guide
+## Architecture
 
-| Document | Purpose | Audience |
-|----------|---------|----------|
-| **[design.md](docs/design.md)** | 🏗️ **Complete system architecture, design decisions, and specifications** | Architects, Senior Developers |
-| **[README.md](#)** | 🚀 **Project overview, quick start, and setup instructions** | New Contributors, Users |
-| **[chainmaker_deployment.md](docs/chainmaker_deployment.md)** | ⛓️ **Blockchain deployment and contract setup guide** | DevOps, Developers |
-| **[CLAUDE.md](CLAUDE.md)** | 💻 **Development guidelines, coding standards, and implementation details** | Developers, AI Assistants |
+The system follows a layered microservices architecture:
 
-📖 **This README focuses on getting started. For architecture details, see [design.md](docs/design.md). For development specifics, see [CLAUDE.md](CLAUDE.md).**
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     External Clients                             │
+└───────────────┬─────────────────────────────┬───────────────────┘
+                │                             │
+                ▼                             ▼
+┌───────────────────────┐     ┌───────────────────────────────────┐
+│   Nginx API Gateway   │     │    Benthos Adapters               │
+│   (mTLS, API Key)     │     │    (Syslog, Kafka, S3)            │
+└───────────┬───────────┘     └───────────────┬───────────────────┘
+            │                                 │
+            ▼                                 ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                   Log Ingestion Service                          │
+│                   (HTTP/gRPC, SHA256, Kafka)                     │
+└───────────────────────────────┬─────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                   Blockchain Engine Service                      │
+│                   (Kafka Consumer, ChainMaker)                   │
+└───────────────────────────────┬─────────────────────────────────┘
+                                │
+            ┌───────────────────┴───────────────────┐
+            ▼                                       ▼
+┌───────────────────────┐             ┌─────────────────────────┐
+│   PostgreSQL          │             │   ChainMaker            │
+│   (Task Status)       │             │   (On-Chain Storage)    │
+└───────────────────────┘             └─────────────────────────┘
+```
 
-## Architecture Overview
+**For detailed architecture**, see [docs/design.md](docs/design.md).
 
-This project implements the architecture described in the [System Design Document](docs/design.md). The Trusted Log Attestation System follows a layered microservices architecture with:
+## Quick Start
 
-- **Decoupling**: Message queue separates high-speed log ingestion from slow blockchain consensus
-- **Encapsulation**: Core business APIs with Benthos for heterogeneous data source adaptation
-- **State vs Content Separation**: Off-chain state DB tracks task status, on-chain blockchain stores content
-- **Multi-Key Verifiability**: Multiple query methods for different user types
+### Prerequisites
 
-📖 **For detailed architecture specifications, component responsibilities, and design decisions, see [design.md](docs/design.md)**
+1. Docker and Docker Compose
+2. ChainMaker deployment (see [docs/chainmaker_deployment.md](docs/chainmaker_deployment.md))
+
+### Setup
+
+```bash
+# 1. Configure environment
+cp .env.example .env
+# Edit .env with your ChainMaker path and node addresses
+
+# 2. Generate ChainMaker client config
+bash scripts/generate-chainmaker-config.sh
+
+# 3. Setup Nginx authentication
+cd ingress
+bash scripts/generate-ssl-certs.sh                              # Server certs + CA
+bash scripts/setup-config.sh                                    # API keys + IP whitelist
+bash scripts/generate-client-cert.sh member-001 "Member One"    # Client cert for mTLS (optional)
+cd ..
+
+# 4. Start all services
+docker compose up -d
+```
+
+### Verify
+
+```bash
+# Check service health
+curl http://localhost/health
+
+# Test log submission via API Gateway (HTTPS)
+curl -k -X POST https://localhost/v1/logs \
+  -H "X-API-Key: example-api-key-12345" \
+  -H "Content-Type: application/json" \
+  -d '{"log_content": "test log message"}'
+
+# Test log submission via Benthos Syslog adapter (UDP)
+echo "<14>1 $(date -u +%Y-%m-%dT%H:%M:%SZ) localhost test - - - Test syslog message" | nc -u localhost 5514
+```
 
 ## Directory Structure
 
 ```
-tlng/
-├── cmd/                     # Service entry points
-│   ├── ingestion/          # ✅ Log Ingestion Service
-│   └── engine/             # ✅ Blockchain Processing Service
-├── ingestion/              # ✅ Ingestion Layer implementation
-├── processing/             # ✅ Processing Layer implementation
-├── blockchain/             # ✅ Blockchain Layer
-├── storage/                # ✅ Storage Layer
-├── internal/               # Shared utilities
-├── config/                 # Configuration files
-├── proto/                  # gRPC definitions
-├── scripts/               # Utility scripts
-├── docker-compose.yml     # Infrastructure
-├── docs/design.md         # 📖 System design document
-├── CLAUDE.md              # 📖 Development guide
-├── benchmark/             # Performance testing
-└── ❌ TODO directories:
-    ├── query/               # Query Layer
-    └── ingress/             # API Gateway
+├── cmd/                    # Service entry points
+│   ├── ingestion/         # Log Ingestion Service
+│   ├── engine/            # Blockchain Processing Service
+│   └── query/             # Query Service
+├── ingestion/             # Ingestion layer (service + Benthos adapters)
+├── ingress/               # API Gateway (Nginx + OpenResty)
+├── processing/            # Batch processing worker
+├── query/                 # Query service implementation
+├── blockchain/            # Blockchain client abstraction
+├── storage/               # Database store interface
+├── config/                # Configuration files
+├── scripts/               # Utility and test scripts
+└── docs/                  # Design documents
 ```
 
-📖 **For detailed directory descriptions, see [CLAUDE.md](CLAUDE.md)**
+## Services
 
-## Implementation Status
+| Service | Port | Description |
+|---------|------|-------------|
+| **Nginx Gateway** | 80, 443, 50052 | API Gateway with TLS, API Key, mTLS authentication |
+| **Ingestion** | 8091, 50051 | Log submission (HTTP/gRPC) |
+| **Engine** | - | Kafka consumer, blockchain attestation |
+| **Query** | 8083 | Status and audit queries |
+| **Benthos** | 5514, 6514 | Syslog adapter (UDP/TCP) |
+| **Kafka** | 9092 | Internal message queue |
+| **PostgreSQL** | 5432 | State database |
 
-### ✅ Implemented Services
+## API Endpoints
 
-📖 **For detailed implementation guidance, see [CLAUDE.md](CLAUDE.md)**
+### Log Submission (API Key Authentication)
+- `POST /v1/logs` - Submit log for attestation
 
-- **Log Ingestion Service** - HTTP/gRPC endpoints with SHA256 hashing and Kafka integration
-- **Blockchain Processing Service** - Multi-worker Kafka consumer with ChainMaker integration
-- **Supporting Infrastructure** - PostgreSQL state database, Kafka message queue, ChainMaker blockchain client
-- **Benthos Adapters** - Syslog, Kafka, and S3 protocol adapters implemented via Redpanda Connect (Benthos), see `ingestion/adapters/README.md` for configuration and run commands
+### Query (API Key Authentication)
+- `GET /v1/query/status/{request_id}` - Query attestation status
+- `POST /v1/query_by_content` - Query by log content
 
-📖 **For detailed architecture specifications, component responsibilities, and design decisions, see [design.md](docs/design.md)**
-
-### ❌ TODO Components
-📖 **For detailed component specifications and implementation priorities, see [design.md](docs/design.md)**
-
-Key components to be implemented or extended:
-- **API Gateway** - TLS termination, unified authentication, and protocol routing
-- **Additional Benthos Adapters** - Future heterogeneous protocol adapters and advanced security controls
-- **Query Layer** - Multi-dimensional query APIs for different user types
-
-## Development
-
-### Prerequisites
-
-> [!IMPORTANT]
-> Before starting the services, you must deploy ChainMaker and the smart contracts.
-> Please follow the **[ChainMaker Deployment Guide](docs/chainmaker_deployment.md)** first.
-
-```bash
-# Start infrastructure dependencies
-docker-compose up -d
-```
-
-### Building
-```bash
-# Build Log Ingestion Service
-go build -o bin/ingestion ./cmd/ingestion
-
-# Build Blockchain Processing Service
-go build -o bin/engine ./cmd/engine
-```
-
-### Running Services
-```bash
-# Run Log Ingestion Service
-./bin/ingestion
-
-# Run Blockchain Processing Service
-./bin/engine
-```
-
-### Testing
-Waiting for future implementation.
-
-## Message Flow
-
-📖 **For detailed message flow specifications and data transformation, see [design.md](docs/design.md)**
-
-The system supports multiple ingestion paths:
-
-1. **Standard HTTP/gRPC Clients** - Direct API submission through TLS-protected endpoints
-2. **Heterogeneous Protocol Sources** - Benthos adapters for S3, Syslog, and Kafka
-3. **Query Requests** - Multi-dimensional log status and content verification
-
-### Benthos Adapters Quickstart
-
-- **Location**: `ingestion/adapters/`
-- **Configs**: `syslog.yml`, `kafka-consumer.yml`, `s3-processor.yml`
-- **Runtime**: Use Redpanda Connect (`redpanda-connect`) to `lint` and `run` these configs
-- **Docs**: For environment variables, security recommendations, and end-to-end examples, see `ingestion/adapters/README.md`
+### Audit (mTLS + IP Whitelist)
+- `GET /v1/audit/log/{log_hash}` - On-chain audit for consortium members
 
 ## Configuration
 
-Each service loads configuration from YAML files:
-- Log Ingestion Service: `config/ingestion.defaults.yml`
-- Blockchain Processing Service: `config/engine.defaults.yml`
-- Blockchain client: `config/blockchain.defaults.yml`
+| File | Purpose |
+|------|---------|
+| `.env` | Environment variables (ChainMaker path, node addresses) |
+| `config/*.defaults.yml` | Service configurations |
+| `ingress/nginx/conf.d/api-keys.json` | API Key definitions |
+| `ingress/nginx/conf.d/consortium-ip-whitelist.json` | mTLS IP whitelist |
+
+**For configuration details**, see [config/README.md](config/README.md).
+
+## Testing
+
+```bash
+# Test API endpoints
+bash scripts/test-ingestion-query-api.sh
+
+# Test consortium audit API (requires mTLS cert)
+bash scripts/test-consortium-audit-api.sh <log_hash>
+```
 
 ## Documentation
 
-- [System Design Document](docs/design.md) - Complete architecture and specifications
-- [CLAUDE.md](CLAUDE.md) - Development guidelines for AI assistants
-- API documentation - TODO (to be implemented with query layer)
+| Document | Description |
+|----------|-------------|
+| [docs/design.md](docs/design.md) | System architecture and design |
+| [docs/chainmaker_deployment.md](docs/chainmaker_deployment.md) | Blockchain setup guide |
+| [config/README.md](config/README.md) | Configuration guide |
+| [ingress/README.md](ingress/README.md) | API Gateway documentation |
+| [ingestion/README.md](ingestion/README.md) | Ingestion layer overview |
+
+## License
+
+See [LICENSE](LICENSE) and [LEGAL.md](LEGAL.md).
