@@ -145,22 +145,23 @@ services:
   benthos-syslog:
     image: redpandadata/connect:latest
     container_name: benthos-syslog-adapter
-    # Mount path of syslog.yml so the adapter configs are available inside the container
+    depends_on:
+      - ingestion
+    ports:
+      - "5514:5514/udp"  # Syslog UDP
+      - "6514:6514/tcp"  # Syslog TCP
     volumes:
-      - ./:/workspace
+      - ./ingestion/adapters:/workspace/ingestion/adapters:ro
     working_dir: /workspace
     # The image entrypoint is redpanda-connect; we only need to pass args.
     command: [ "run", "/workspace/ingestion/adapters/syslog.yml" ]
     environment:
-      # Core ingestion endpoint (adjust if your ingestion service runs elsewhere)
-      INGESTION_ENDPOINT: "http://ingestion:8091/v1/logs"
-      # Default org id injected into client_source_org_id
-      DEFAULT_ORG_ID: "demo-org"
-      # Syslog listen addresses (UDP/TCP)
-      SYSLOG_UDP_ADDR: "0.0.0.0:5514"
-      SYSLOG_TCP_ADDR: "0.0.0.0:6514"
-      # Optional rate limiting controls
-      # RATE_LIMIT_COUNT: "1000"
-      # RATE_LIMIT_PERIOD: "1s"
-      # RATE_LIMIT_ENABLED: "false"
+      - TZ=Asia/Shanghai
+      - INGESTION_ENDPOINT=http://ingestion:8091/v1/logs
+      - DEFAULT_ORG_ID=org-abc
+      - SYSLOG_UDP_ADDR=0.0.0.0:5514
+      - SYSLOG_TCP_ADDR=0.0.0.0:6514
+      - HTTP_BATCH_COUNT=200
+      - HTTP_BATCH_BYTES=200000
+      - HTTP_BATCH_PERIOD=1s
     restart: unless-stopped
