@@ -16,7 +16,7 @@ services:
     depends_on:
       - zookeeper
     ports:
-      - "9092:9092"
+      - "9093:9092"
       - "29092:29092"
     environment:
       KAFKA_BROKER_ID: 1
@@ -37,10 +37,10 @@ services:
       "
       echo 'Waiting for Kafka to be ready...'
       cub kafka-ready -b kafka:29092 1 30
-      
+
       echo 'Creating topic log_submissions...'
       kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 6 --replication-factor 1 --topic log_submissions
-      
+
       echo 'Topic created successfully!'
       "
 
@@ -60,6 +60,85 @@ services:
       - ./scripts/db:/scripts
     restart: always
 
+  ingestion:
+    build:
+      context: .
+      dockerfile: cmd/ingestion/Dockerfile
+    container_name: ingestion-service-tlng
+    depends_on:
+      - postgres
+      - kafka
+      - kafka-init
+    # ports removed - only accessible via nginx
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./config/ingestion.defaults.yml:/app/config/ingestion.defaults.yml
+    restart: always
+
+  engine:
+    build:
+      context: .
+      dockerfile: cmd/engine/Dockerfile
+    container_name: engine-service-tlng
+    depends_on:
+      - postgres
+      - kafka
+      - kafka-init
+    environment:
+      - TZ=Asia/Shanghai
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./config/engine.defaults.yml:/app/config/engine.defaults.yml
+      - ./config/blockchain.defaults.yml:/app/config/blockchain.defaults.yml
+      - ./config/clients:/app/config/clients
+      # ChainMaker path from .env file
+      - ${CHAINMAKER_PATH}:/app/chainmaker-go:ro
+    restart: always
+
+  query:
+    build:
+      context: .
+      dockerfile: cmd/query/Dockerfile
+    container_name: query-service-tlng
+    depends_on:
+      - postgres
+    # ports removed - only accessible via nginx
+    environment:
+      - TZ=Asia/Shanghai
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./config/query.defaults.yml:/app/config/query.defaults.yml
+      - ./config/blockchain.defaults.yml:/app/config/blockchain.defaults.yml
+      - ./config/clients:/app/config/clients
+      - ~/docker-volumes/tlng-query-logs:/var/log/query
+      # ChainMaker path from .env file
+      - ${CHAINMAKER_PATH}:/app/chainmaker-go:ro
+    restart: always
+
+  nginx:
+    build:
+      context: ./ingress
+      dockerfile: Dockerfile
+    container_name: nginx-gateway-tlng
+    depends_on:
+      - ingestion
+      - query
+    ports:
+      - "80:80"      # HTTP
+      - "443:443"    # HTTPS
+      - "50052:50052"  # gRPC
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./ingress/nginx/ssl:/etc/nginx/ssl:ro
+      - ./ingress/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./ingress/nginx/lua:/etc/nginx/lua:ro
+      - ~/docker-volumes/tlng-nginx-logs:/var/log/nginx
+    restart: always
+
   # Example Benthos (Redpanda Connect) adapter container
   # Default runs the Syslog adapter config; you can switch to
   # s3-processor.yml / kafka-consumer.yml by changing the command.
@@ -71,12 +150,10 @@ services:
       - ./:/workspace
     working_dir: /workspace
     # The image entrypoint is redpanda-connect; we only need to pass args.
-    command: ["run", "/workspace/ingestion/adapters/syslog.yml"]
+    command: [ "run", "/workspace/ingestion/adapters/syslog.yml" ]
     environment:
       # Core ingestion endpoint (adjust if your ingestion service runs elsewhere)
       INGESTION_ENDPOINT: "http://ingestion:8091/v1/logs"
-      # configure the api key of the ingestion service
-      INGESTION_API_KEY: "change-me"
       # Default org id injected into client_source_org_id
       DEFAULT_ORG_ID: "demo-org"
       # Syslog listen addresses (UDP/TCP)

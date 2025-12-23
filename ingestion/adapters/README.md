@@ -56,6 +56,7 @@ export DEFAULT_ORG_ID=dkb
 export INGESTION_ENDPOINT=http://127.0.0.1:8093/v1/logs
 # Optional: To enable custom flow control thresholds, please uncomment and set appropriate values (otherwise use the default values in the configuration)
 # export HTTP_BATCH_COUNT=500
+# export HTTP_BATCH_BYTES=500000
 # export HTTP_BATCH_PERIOD=2
 
 ./redpanda-connect lint ingestion/adapters/syslog.yml
@@ -85,6 +86,7 @@ export DEFAULT_ORG_ID=dkb
 export INGESTION_ENDPOINT=http://127.0.0.1:8093/v1/logs
 # Optional: To enable custom flow control thresholds, please uncomment and set appropriate values (otherwise use the default values in the configuration)
 # export HTTP_BATCH_COUNT=500
+# export HTTP_BATCH_BYTES=500000
 # export HTTP_BATCH_PERIOD=2
 
 ./redpanda-connect lint ingestion/adapters/kafka-consumer.yml
@@ -115,6 +117,7 @@ export DEFAULT_ORG_ID=dkbmtb
 export INGESTION_ENDPOINT=http://127.0.0.1:8093/v1/logs
 # Optional: To enable custom flow control thresholds, please uncomment and set appropriate values (otherwise use the default values in the configuration)
 # export HTTP_BATCH_COUNT=500
+# export HTTP_BATCH_BYTES=500000
 # export HTTP_BATCH_PERIOD=2
   
 ./redpanda-connect lint ingestion/adapters/s3-processor.yml
