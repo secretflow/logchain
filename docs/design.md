@@ -41,7 +41,7 @@
 
 #### A. Adapters - Heterogeneous Protocol Conversion
 
-**Component**: `Benthos`  
+**Component**: `Benthos` (implemented via `Redpanda Connect` configuration in `ingestion/adapters/`)  
 **Responsibilities**: Heterogeneous protocol adapter that directly receives external heterogeneous protocol data and converts it to a unified format.
 
 **Key Workflows**:
@@ -49,6 +49,14 @@
 * Performs protocol parsing and data normalization (timestamp formatting, field mapping, etc.)
 * Batch processing and buffering optimization (aggregates small requests to improve processing efficiency)
 * Forwards processed logs uniformly to Log Ingestion Service
+
+**Implementation Status & Adapter Types**:
+* ✅ Implemented via `redpanda-data/connect` (Benthos-compatible) with configuration files under `ingestion/adapters/`
+* Supported adapters in the first phase:
+  * **Syslog Adapter (`syslog.yml`)**: Listens on UDP `5514` / TCP `6514`, parses syslog messages, maps raw message body into `log_content`, and forwards to `POST /v1/logs`
+  * **Kafka Adapter (`kafka-consumer.yml`)**: Consumes from configured Kafka topics (supporting TLS/mTLS), normalizes messages, and forwards to Log Ingestion Service
+  * **S3 Adapter (`s3-processor.yml`)**: Connects to `AWS S3` or S3-compatible storage (e.g. MinIO), reads objects line-by-line, wraps each line as `log_content`, and sends batched HTTP requests to Log Ingestion Service
+* All adapters support optional rate limiting (`RATE_LIMIT_COUNT` / `RATE_LIMIT_PERIOD` / `RATE_LIMIT_ENABLED`)
 
 **Security Access Control**:
 * **S3 Access Control**: Platform provides dedicated S3 buckets, controls client write permissions through IAM policies and pre-signed URLs
@@ -63,7 +71,7 @@
 **Responsibilities**: Unified processing entry for all log flows
 
 **Key Workflows**:
-* Receives standardized log content from direct clients (`HTTP`/`gRPC`) or `Benthos` adapters
+* Receives standardized log content from direct clients (`HTTP`/`gRPC`)
 * Obtains caller identity information from request context (from API Gateway or network layer identification)
 * Calculates `SHA256` hash and generates `UUID` as `request_id`
 * Immediately returns `request_id` and hash to the caller

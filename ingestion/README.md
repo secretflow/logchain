@@ -8,18 +8,20 @@ According to the design document, this layer consists of two main components:
 
 ### 1. Benthos Adapters (`adapters/`)
 
-🚧 **TODO**: Future implementation
+✅ **Implemented**
 
-These adapters handle heterogeneous protocol conversion:
-- **Syslog** - UDP/TCP syslog protocol (port 514)
+These adapters handle heterogeneous protocol conversion and forward normalized logs to the Log Ingestion Service:
+- **Syslog** - UDP/TCP syslog protocol (UDP 5514 / TCP 6514)
 - **Kafka Topics** - Direct Kafka topic consumption
-- **S3** - AWS S3 bucket file processing
+- **S3** - AWS S3 bucket file processing (line-by-line)
 - **Other protocols** - Any future heterogeneous data sources
 
 **Workflow:**
-1. Receive heterogeneous protocol traffic from API Gateway
-2. Parse and standardize data formats
-3. Forward processed logs to the Log Ingestion Service
+1. Receive heterogeneous protocol traffic (from External API Gateway or internal network)
+2. Parse and standardize data formats into a JSON payload, with `log_content` as the raw log field
+3. Forward processed logs to the Log Ingestion Service HTTP endpoint (默认 `POST /v1/logs`)
+
+For detailed configuration and startup examples, see `ingestion/adapters/README.md`.
 
 ### 2. Log Ingestion Service (`service/`)
 
@@ -78,7 +80,7 @@ Configuration is managed through:
 - ✅ Log Ingestion Service (HTTP/gRPC APIs)
 - ✅ Core service logic and batch processing
 - ✅ Integration with Kafka and State DB
-- 🚧 Benthos Adapters (TODO)
+- ✅ Benthos Adapters（Syslog / Kafka / S3 基础适配和限流支持）
 
 ## Testing
 

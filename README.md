@@ -59,15 +59,16 @@ tlng/
 - **Log Ingestion Service** - HTTP/gRPC endpoints with SHA256 hashing and Kafka integration
 - **Blockchain Processing Service** - Multi-worker Kafka consumer with ChainMaker integration
 - **Supporting Infrastructure** - PostgreSQL state database, Kafka message queue, ChainMaker blockchain client
+- **Benthos Adapters** - Syslog, Kafka, and S3 protocol adapters implemented via Redpanda Connect (Benthos), see `ingestion/adapters/README.md` for configuration and run commands
 
 📖 **For detailed architecture specifications, component responsibilities, and design decisions, see [design.md](docs/design.md)**
 
 ### ❌ TODO Components
 📖 **For detailed component specifications and implementation priorities, see [design.md](docs/design.md)**
 
-Key components to be implemented:
+Key components to be implemented or extended:
 - **API Gateway** - TLS termination, unified authentication, and protocol routing
-- **Benthos Adapters** - Direct protocol reception (S3, Syslog, Kafka) with security controls
+- **Additional Benthos Adapters** - Future heterogeneous protocol adapters and advanced security controls
 - **Query Layer** - Multi-dimensional query APIs for different user types
 
 ## Development
@@ -113,6 +114,13 @@ The system supports multiple ingestion paths:
 1. **Standard HTTP/gRPC Clients** - Direct API submission through TLS-protected endpoints
 2. **Heterogeneous Protocol Sources** - Benthos adapters for S3, Syslog, and Kafka
 3. **Query Requests** - Multi-dimensional log status and content verification
+
+### Benthos Adapters Quickstart
+
+- **Location**: `ingestion/adapters/`
+- **Configs**: `syslog.yml`, `kafka-consumer.yml`, `s3-processor.yml`
+- **Runtime**: Use Redpanda Connect (`redpanda-connect`) to `lint` and `run` these configs
+- **Docs**: For environment variables, security recommendations, and end-to-end examples, see `ingestion/adapters/README.md`
 
 ## Configuration
 

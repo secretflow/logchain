@@ -37,10 +37,10 @@ services:
       "
       echo 'Waiting for Kafka to be ready...'
       cub kafka-ready -b kafka:29092 1 30
-      
+
       echo 'Creating topic log_submissions...'
       kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 6 --replication-factor 1 --topic log_submissions
-      
+
       echo 'Topic created successfully!'
       "
 
@@ -138,3 +138,29 @@ services:
       - ./ingress/nginx/lua:/etc/nginx/lua:ro
       - ~/docker-volumes/tlng-nginx-logs:/var/log/nginx
     restart: always
+
+  # Example Benthos (Redpanda Connect) adapter container
+  # Default runs the Syslog adapter config; you can switch to
+  # s3-processor.yml / kafka-consumer.yml by changing the command.
+  benthos-syslog:
+    image: redpandadata/connect:latest
+    container_name: benthos-syslog-adapter
+    # Mount path of syslog.yml so the adapter configs are available inside the container
+    volumes:
+      - ./:/workspace
+    working_dir: /workspace
+    # The image entrypoint is redpanda-connect; we only need to pass args.
+    command: [ "run", "/workspace/ingestion/adapters/syslog.yml" ]
+    environment:
+      # Core ingestion endpoint (adjust if your ingestion service runs elsewhere)
+      INGESTION_ENDPOINT: "http://ingestion:8091/v1/logs"
+      # Default org id injected into client_source_org_id
+      DEFAULT_ORG_ID: "demo-org"
+      # Syslog listen addresses (UDP/TCP)
+      SYSLOG_UDP_ADDR: "0.0.0.0:5514"
+      SYSLOG_TCP_ADDR: "0.0.0.0:6514"
+      # Optional rate limiting controls
+      # RATE_LIMIT_COUNT: "1000"
+      # RATE_LIMIT_PERIOD: "1s"
+      # RATE_LIMIT_ENABLED: "false"
+    restart: unless-stopped

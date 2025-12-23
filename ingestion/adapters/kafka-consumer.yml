@@ -1,0 +1,61 @@
+input:
+  label: kafka_logs
+  kafka:
+    addresses: [ ${KAFKA_BROKERS:localhost:9092} ]
+    topics: [ ${KAFKA_TOPIC:logs.raw} ]
+    consumer_group: ${KAFKA_CONSUMER_GROUP:benthos-adapter}
+    client_id: ${KAFKA_CLIENT_ID:benthos-adapter}
+    start_from_oldest: true
+    commit_period: 1s
+
+    tls:
+      # Whether tls settings are enabled
+      enabled: ${KAFKA_TLS_ENABLED:false}
+      # Config server CA to verify server cert
+      root_cas_file: ${KAFKA_CA_FILE:./ca.pem}
+      # Whether to perform server certificate authentication, true mean not verify, false mean verify
+      skip_cert_verify: ${SKIP_SERVER_CERT_VERIFY:false}
+      # Whether to perform client certificate authentication
+      client_certs:
+          # Config client crt and key
+        - cert_file: ${KAFKA_CLIENT_CERT_FILE:./client.crt}
+          key_file:  ${KAFKA_CLIENT_KEY_FILE:./client.key}
+
+# applies back pressure to a processing pipeline when the limit is reached rather than abandon
+rate_limit_resources:
+  - label: log_ingest_limit
+    local:
+      count: ${RATE_LIMIT_COUNT:1000}
+      interval: ${RATE_LIMIT_PERIOD:1s}
+
+pipeline:
+  processors:
+    - label: optional_rate_limit
+      switch:
+        - check: env("RATE_LIMIT_ENABLED").or("false") == "true"
+          processors:
+            - rate_limit:
+                resource: log_ingest_limit
+
+    - label: normalize_kafka
+      mapping: |
+        let ts = now()
+        root.log_content = content().string()
+        root.client_source_org_id = env("DEFAULT_ORG_ID").or("")
+        root.client_timestamp = $ts.format_timestamp("2006-01-02T15:04:05.000000000Z07:00")
+
+output:
+  http_client:
+    url: ${INGESTION_ENDPOINT:http://ingestion:8091/v1/logs}
+    verb: POST
+    headers:
+      Content-Type: application/json
+      X-Source-Adapter: kafka
+    timeout: 5s
+    retries: 10
+    retry_period: 2s
+    max_retry_backoff: 1m
+    batching:
+      count: ${HTTP_BATCH_COUNT:200}
+      byte_size: ${HTTP_BATCH_BYTES:200000}
+      period: ${HTTP_BATCH_PERIOD:1s}
