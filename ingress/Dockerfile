@@ -30,6 +30,8 @@ RUN chmod -R 755 /etc/nginx/lua \
     && chmod 644 /etc/nginx/conf.d/*.conf \
     && chown -R nobody:nobody /etc/nginx \
     && chown -R nobody:nobody /var/log/nginx /var/cache/nginx \
+    && touch /var/log/nginx/audit.log \
+    && chown nobody:nobody /var/log/nginx/audit.log \
     && setcap 'cap_net_bind_service=+ep' /usr/local/openresty/nginx/sbin/nginx
 
 # Expose ports

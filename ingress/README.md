@@ -29,10 +29,10 @@ Based on `../docs/design.md`, this layer handles:
   - `POST /v1/logs` → Log Ingestion Service (API Key auth)
   - `gRPC SubmitLog` → Log Ingestion Service (API Key auth)
 - **Query Routes**:
-  - `GET /status/{request_id}` → Query Service (API Key auth)
-  - `POST /query_by_content` → Query Service (API Key auth)
+  - `GET /v1/query/status/{request_id}` → Query Service (API Key auth)
+  - `POST /v1/query_by_content` → Query Service (API Key auth)
   - `GET /log/by_tx/{tx_hash}` → Query Service (mTLS + IP whitelist)
-  - `GET /log/{on_chain_log_id}` → Query Service (mTLS + IP whitelist)
+  - `GET /v1/audit/log/{log_hash}` → Query Service (mTLS + IP whitelist)
 
 ### 4. Load Balancing
 - Distributes incoming traffic across available service instances
@@ -137,7 +137,8 @@ For consortium members, configure:
 ```bash
 bash scripts/generate-client-cert.sh member-001 "Regulatory Authority A"
 ```
-- Client certificate for mTLS (`ssl/clients/member-001/client-cert.pem`, `ssl/clients/member-001/client-key.pem`, `ssl/clients/member-001/client.p12`)
+- Client certificate for mTLS (`scripts/clients/member-001/client-cert.pem`, `scripts/clients/member-001/client-key.pem`)
+- CA certificate (`scripts/ca/ca-cert.pem`)
 
 **Important** `The current certificate is issued by default using a CA certificate under SSL. If you need to use your own CA for issuance, please configure the corresponding CA certificate in the ssl_client_certificate field of mtls.conf`
 
@@ -212,12 +213,12 @@ grpcurl -proto ../proto/logingestion.proto -insecure \
 
 **Status Query:**
 ```bash
-curl -k -H "X-API-Key: example-api-key-12345" https://localhost/status/{request_id}
+curl -k -H "X-API-Key: example-api-key-12345" https://localhost/v1/query/status/{request_id}
 ```
 
 **Content-based Query:**
 ```bash
-curl -k -X POST https://localhost/query_by_content \
+curl -k -X POST https://localhost/v1/query_by_content \
   -H "X-API-Key: example-api-key-12345" \
   -H "Content-Type: application/json" \
   -d '{"log_content": "your log content here"}'
@@ -228,17 +229,17 @@ curl -k -X POST https://localhost/query_by_content \
 **Query by Transaction Hash:**
 ```bash
 curl https://localhost/log/by_tx/{tx_hash} \
-  --cert ssl/clients/member-001/client-cert.pem \
-  --key ssl/clients/member-001/client-key.pem \
-  --cacert ssl/ca-cert.pem
+  --cert scripts/clients/member-001/client-cert.pem \
+  --key scripts/clients/member-001/client-key.pem \
+  --cacert scripts/ca/ca-cert.pem
 ```
 
-**Query by On-Chain Log ID:**
+**Query by Log Hash:**
 ```bash
-curl https://localhost/log/{on_chain_log_id} \
-  --cert ssl/clients/member-001/client-cert.pem \
-  --key ssl/clients/member-001/client-key.pem \
-  --cacert ssl/ca-cert.pem
+curl https://localhost/v1/audit/log/{log_hash} \
+  --cert scripts/clients/member-001/client-cert.pem \
+  --key scripts/clients/member-001/client-key.pem \
+  --cacert scripts/ca/ca-cert.pem
 ```
 ## Production Deployment
 
