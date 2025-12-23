@@ -95,6 +95,8 @@ Logs attested through LogChain can serve as admissible evidence, with blockchain
 
 ## Integration Options
 
+> **Note**: The examples below use `logchain.example.com` as a placeholder. Replace it with your actual deployment domain or `localhost` for local testing.
+
 ### Direct API Integration
 ```bash
 # Submit log via HTTPS
@@ -169,7 +171,7 @@ curl https://logchain.example.com/v1/audit/log/{log_hash} \
 
 - [Technical Architecture](design.md) - Detailed system design and specifications
 - [Deployment Guide](chainmaker_deployment.md) - Self-hosted deployment instructions
-- [GitHub Repository](https://github.com/your-org/logchain) - Source code and documentation
+- [GitHub Repository](https://github.com/secretflow/logchain) - Source code and documentation
 
 ---
 
