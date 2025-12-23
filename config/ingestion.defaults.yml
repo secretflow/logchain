@@ -4,7 +4,7 @@ grpc_listen_addr: ":50051" # gRPC service listen address (if needed)
 
 # Database Configuration
 database:
-  dsn: "postgres://testuser:secret@localhost:5433/testdb?sslmode=disable"
+  dsn: "postgres://testuser:secret@postgres:5432/testdb?sslmode=disable"
   max_connections: 50
   min_connections: 10
   max_idle_time: "30m"        # Shorter idle time for API Gateway (lighter workload)
@@ -12,7 +12,7 @@ database:
 
 # Kafka Producer Configuration
 kafka_producer:
-  brokers: ["localhost:9092"]
+  brokers: ["kafka:29092"]
   topic: "log_submissions"
 
   # Batch processing settings (match batch_processor for consistency)

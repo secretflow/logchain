@@ -15,3 +15,9 @@ benchmark/
 .cluade/
 
 .vscode/
+
+# Environment configuration
+.env
+
+# Generated configuration files
+config/clients/chainmaker.yml

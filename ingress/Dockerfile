@@ -41,4 +41,3 @@ HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
 
 # Start Nginx with our config path
 CMD ["/usr/local/openresty/bin/openresty", "-c", "/etc/nginx/nginx.conf", "-g", "daemon off;"]
-
