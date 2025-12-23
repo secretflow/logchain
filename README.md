@@ -8,7 +8,7 @@ The system follows a layered microservices architecture:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                     External Clients                             │
+│                     External Clients                            │
 └───────────────┬─────────────────────────────┬───────────────────┘
                 │                             │
                 ▼                             ▼
@@ -19,14 +19,14 @@ The system follows a layered microservices architecture:
             │                                 │
             ▼                                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                   Log Ingestion Service                          │
-│                   (HTTP/gRPC, SHA256, Kafka)                     │
+│                   Log Ingestion Service                         │
+│                   (HTTP/gRPC, SHA256, Kafka)                    │
 └───────────────────────────────┬─────────────────────────────────┘
                                 │
                                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                   Blockchain Engine Service                      │
-│                   (Kafka Consumer, ChainMaker)                   │
+│                   Blockchain Engine Service                     │
+│                   (Kafka Consumer, ChainMaker)                  │
 └───────────────────────────────┬─────────────────────────────────┘
                                 │
             ┌───────────────────┴───────────────────┐
