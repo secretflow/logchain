@@ -18,12 +18,8 @@ CREATE TABLE IF NOT EXISTS tbl_log_status (
     retry_count INTEGER NOT NULL DEFAULT 0
 );
 
--- 1. log_hash index - needed for future content reverse lookup queries
+-- Indexes for query APIs
+-- API 1: GET /v1/query/status/{request_id} - uses request_id (already PRIMARY KEY, no extra index needed)
+-- API 2: POST /v1/query_by_content - uses log_hash for content-based lookup
 CREATE INDEX IF NOT EXISTS idx_log_status_log_hash ON tbl_log_status (log_hash);
-
--- 2. tx_hash index - needed for future blockchain audit queries
-CREATE INDEX IF NOT EXISTS idx_log_status_tx_hash ON tbl_log_status (tx_hash) WHERE tx_hash IS NOT NULL;
-
--- 3. Optimized composite index for status + time-based operations
--- This replaces the old partial index and is more flexible
-CREATE INDEX IF NOT EXISTS idx_log_status_status_time ON tbl_log_status (status, received_at_db);
+-- API 3: GET /v1/audit/log/{log_hash} - uses log_hash (covered by above index)

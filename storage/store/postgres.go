@@ -404,3 +404,77 @@ func (s *PostgresStore) InsertLogStatusBatch(ctx context.Context, statuses []*Lo
 
 	return nil
 }
+
+// GetLogStatusByRequestID queries log status by request_id
+func (s *PostgresStore) GetLogStatusByRequestID(ctx context.Context, requestID string) (*LogStatus, error) {
+	query := `
+		SELECT request_id, log_hash, source_org_id, received_timestamp,
+		       status, received_at_db, processing_started_at, processing_finished_at,
+		       tx_hash, block_height, log_hash_on_chain, error_message, retry_count
+		FROM tbl_log_status
+		WHERE request_id = $1
+	`
+
+	var status LogStatus
+	err := s.db.QueryRow(ctx, query, requestID).Scan(
+		&status.RequestID,
+		&status.LogHash,
+		&status.SourceOrgID,
+		&status.ReceivedTimestamp,
+		&status.Status,
+		&status.ReceivedAtDB,
+		&status.ProcessingStartedAt,
+		&status.ProcessingFinishedAt,
+		&status.TxHash,
+		&status.BlockHeight,
+		&status.LogHashOnChain,
+		&status.ErrorMessage,
+		&status.RetryCount,
+	)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrLogNotFound
+		}
+		return nil, fmt.Errorf("failed to query log status by request_id: %w", err)
+	}
+
+	return &status, nil
+}
+
+// GetLogStatusByHash queries log status by log_hash
+func (s *PostgresStore) GetLogStatusByHash(ctx context.Context, logHash string) (*LogStatus, error) {
+	query := `
+		SELECT request_id, log_hash, source_org_id, received_timestamp,
+		       status, received_at_db, processing_started_at, processing_finished_at,
+		       tx_hash, block_height, log_hash_on_chain, error_message, retry_count
+		FROM tbl_log_status
+		WHERE log_hash = $1
+	`
+
+	var status LogStatus
+	err := s.db.QueryRow(ctx, query, logHash).Scan(
+		&status.RequestID,
+		&status.LogHash,
+		&status.SourceOrgID,
+		&status.ReceivedTimestamp,
+		&status.Status,
+		&status.ReceivedAtDB,
+		&status.ProcessingStartedAt,
+		&status.ProcessingFinishedAt,
+		&status.TxHash,
+		&status.BlockHeight,
+		&status.LogHashOnChain,
+		&status.ErrorMessage,
+		&status.RetryCount,
+	)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrLogNotFound
+		}
+		return nil, fmt.Errorf("failed to query log status by log_hash: %w", err)
+	}
+
+	return &status, nil
+}
