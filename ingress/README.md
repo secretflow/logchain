@@ -2,11 +2,9 @@
 
 ## Overview
 
-The Ingress Layer serves as the traffic entry point and routing layer for the entire trusted log attestation system. It implements a comprehensive API Gateway using **Nginx with OpenResty** (for Lua support), providing TLS termination, unified authentication, protocol routing, and load balancing.
+The Ingress Layer is the API Gateway for the log attestation system, built with **Nginx + OpenResty**. It handles TLS termination, authentication, routing, and load balancing for all incoming traffic.
 
-## Responsibilities
-
-Based on `../docs/design.md`, this layer handles:
+## Core Features
 
 ### 1. TLS Termination
 - Processes all HTTPS requests
@@ -14,45 +12,40 @@ Based on `../docs/design.md`, this layer handles:
 - Ensures secure communication channels
 - Supports HTTP/2
 
-### 2. Unified Authentication
-- **API Key Authentication**: 
-  - Validates API client identity for log submission and query operations
-  - Supports file-based, Redis-based, or external service-based validation
-  - Passes client identity to backend services via HTTP headers
-- **mTLS + IP Whitelist Authentication**: Dual authentication for consortium members
-  - Validates client certificates signed by consortium CA
-  - Verifies IP addresses against whitelist
-  - Enables on-chain data audit access
+### 2. Authentication
+- **API Key**: For log submission and query operations (file/Redis/external service)
+- **mTLS + IP Whitelist**: Dual authentication for consortium audit access
 
 ### 3. Protocol Routing
-- **HTTP/gRPC Routes**: 
-  - `POST /v1/logs` → Log Ingestion Service (API Key auth)
-  - `gRPC SubmitLog` → Log Ingestion Service (API Key auth)
-- **Query Routes**:
-  - `GET /v1/query/status/{request_id}` → Query Service (API Key auth)
-  - `POST /v1/query_by_content` → Query Service (API Key auth)
-  - `GET /log/by_tx/{tx_hash}` → Query Service (mTLS + IP whitelist)
-  - `GET /v1/audit/log/{log_hash}` → Query Service (mTLS + IP whitelist)
+- **Log Submission** (API Key):
+  - `POST /v1/logs` → Ingestion Service (HTTP)
+  - `gRPC SubmitLog` → Ingestion Service (gRPC on :50052)
+- **Query** (API Key):
+  - `GET /v1/query/status/{request_id}` → Query Service
+  - `POST /v1/query_by_content` → Query Service
+- **Audit** (mTLS + IP Whitelist):
+  - `GET /v1/audit/log/{log_hash}` → Query Service
+  - `GET /log/by_tx/{tx_hash}` → Query Service
+  - `GET /log/{on_chain_log_id}` → Query Service
 
 ### 4. Load Balancing
-- Distributes incoming traffic across available service instances
-- Uses least-connection algorithm for optimal distribution
-- Supports health checks and automatic failover
-- Ensures high availability and performance
-- Supports horizontal scaling of backend services
-- Supports horizontal scaling of the nginx instance itself 
+- Least-connection algorithm for backend services
+- Health checks and automatic failover
+- Horizontal scaling support
 
 ### 5. Rate Limiting
-- API submission: 100 requests/second (burst: 20)
-- Query operations: 50 requests/second (burst: 10)
-- Audit operations: 20 requests/second (burst: 5)
+- Log submission: 100 req/s (burst: 20)
+- Query: 50 req/s (burst: 10)
+- Audit: 20 req/s (burst: 5)
 
 ### 6. Audit Logging
-- Records all authentication events (success/failure)
-- Logs critical operations with detailed context
-- Provides audit trail for security compliance
+- Authentication events (success/failure)
+- Critical operations with context
+- Security compliance audit trail
 
 ## Quick Start
+
+**Note**: For production deployment, use the root `docker-compose.yml` which includes all services. This guide focuses on standalone ingress setup for development/testing.
 
 ### Prerequisites
 
@@ -66,9 +59,9 @@ cd ingress
 bash scripts/generate-ssl-certs.sh
 ```
 
-This will create:
-- Server certificate and key (`ssl/cert.pem`, `ssl/key.pem`)
-- CA certificate for mTLS (`ssl/ca-cert.pem`)
+This creates:
+- **Server certificates**: `nginx/ssl/cert.pem`, `nginx/ssl/key.pem`, `nginx/ssl/ca-cert.pem`
+- **CA files**: `scripts/ca/ca-cert.pem`, `scripts/ca/ca-key.pem` (for signing client certificates)
 
 ### 2. Setup Configuration Files
 
@@ -134,52 +127,53 @@ For consortium members, configure:
 
 ### 5. Generate Client Certificates
 
+For consortium members to access audit endpoints:
+
 ```bash
 bash scripts/generate-client-cert.sh member-001 "Regulatory Authority A"
 ```
-- Client certificate for mTLS (`scripts/clients/member-001/client-cert.pem`, `scripts/clients/member-001/client-key.pem`)
-- CA certificate (`scripts/ca/ca-cert.pem`)
 
-**Important** `The current certificate is issued by default using a CA certificate under SSL. If you need to use your own CA for issuance, please configure the corresponding CA certificate in the ssl_client_certificate field of mtls.conf`
+This creates:
+- Client certificate: `scripts/clients/member-001/client-cert.pem`
+- Client private key: `scripts/clients/member-001/client-key.pem`
 
-### 6. Configure Backend Services 
-**Important** `If you are only testing API-Gateway-related functionality, you can temporarily leave the backend service unconfigured`
+**Note**: Certificates are signed by the CA generated in step 1. For production, use your own CA by updating `ssl_client_certificate` in `nginx.conf`.
 
-Configure backend service addresses in `nginx/nginx.conf`:
+### 6. Configure Backend Services
+
+**For testing API Gateway only**: You can skip this and use mock services.
+
+**For integration with actual services**: Update upstream addresses in `nginx/nginx.conf`:
 
 ```nginx
 upstream ingestion_http {
     least_conn;
-    server ingestion-service:8091 max_fails=3 fail_timeout=30s;
-    # Add more instances for load balancing:
-    # server ingestion-service-2:8091 max_fails=3 fail_timeout=30s;
+    server ingestion-service-tlng:8091 max_fails=3 fail_timeout=30s;
+    # Add more instances:
+    # server ingestion-service-tlng-2:8091 max_fails=3 fail_timeout=30s;
     keepalive 32;
 }
 ```
 
-### 7. Configure log directory user group
-**Important** `exec this chown in the container`
+### 7. Start the API Gateway
 
 ```bash
-chown -R nobody:nobody /var/log/nginx
-```
-
-### 8. Start the API Gateway
-
-```bash
-docker-compose up -d
+cd ..
+docker-compose up -d nginx
 ```
 
 The API Gateway will be available at:
-- HTTP: `http://localhost:8080` (redirects to HTTPS)
+- HTTP: `http://localhost:80` (redirects to HTTPS)
 - HTTPS: `https://localhost:443`
 - gRPC: `localhost:50052`
 
-### 9. Verify Health
+**Note**: Log directory permissions are handled automatically by the Dockerfile.
+
+### 8. Verify Health
 
 ```bash
-curl http://localhost:8080/health
-# Should return: healthy
+curl http://localhost/health
+# Expected: healthy
 ```
 
 ## API Endpoints
@@ -243,48 +237,46 @@ curl https://localhost/v1/audit/log/{log_hash} \
 ```
 ## Production Deployment
 
-### 1. Replace Self-Signed Certificates
+### 1. Replace Certificates
 
-Replace the generated self-signed certificates with certificates from a trusted CA:
+Use certificates from a trusted CA:
 
 ```bash
-# Copy your certificates
-cp /path/to/your/cert.pem ssl/cert.pem
-cp /path/to/your/key.pem ssl/key.pem
-cp /path/to/your/ca-cert.pem ssl/ca-cert.pem
-
-# Set proper permissions
-chmod 600 ssl/key.pem
-chmod 644 ssl/cert.pem ssl/ca-cert.pem
+cp /path/to/your/cert.pem nginx/ssl/cert.pem
+cp /path/to/your/key.pem nginx/ssl/key.pem
+cp /path/to/your/ca-cert.pem nginx/ssl/ca-cert.pem
+chmod 600 nginx/ssl/key.pem
+chmod 644 nginx/ssl/cert.pem nginx/ssl/ca-cert.pem
 ```
+
 ### 2. Configure API Keys
 
-Update `nginx/conf.d/api-keys.json` with actual API keys. Consider:
-- Using Redis or external auth service for centralized management
+Update `nginx/conf.d/api-keys.json` with production API keys. For centralized management, use Redis or external auth service.
 
 ### 3. Configure IP Whitelists
 
 Update `nginx/conf.d/consortium-ip-whitelist.json` with actual consortium member IPs.
 
-### 4. Configure Upstream addr
+### 4. Update Upstream Services
 
-Update `nginx/nginx.conf` with actual upstream addr
+In `nginx/nginx.conf`, configure actual backend service addresses for production.
 
-### 5. Enable Monitoring
+### 5. Monitoring
 
 Monitor:
 - Access logs: `logs/access.log`
 - Error logs: `logs/error.log`
 - Audit logs: `logs/audit.log`
 
-### 6. Set Environment Variables
+### 6. Environment Variables
 
-```bash
-# In docker-compose.yml or .env file
-API_KEY_AUTH_METHOD=redis  # or "service" for external auth
-REDIS_HOST=redis
-REDIS_PORT=6379
-AUTH_SERVICE_URL=http://auth-service:8080/validate
+Configure in `docker-compose.yml`:
+
+```yaml
+API_KEY_AUTH_METHOD: redis  # file | redis | service
+REDIS_HOST: redis
+REDIS_PORT: 6379
+AUTH_SERVICE_URL: http://auth-service:8080/validate
 ```
 
 ## Troubleshooting
@@ -292,35 +284,34 @@ AUTH_SERVICE_URL=http://auth-service:8080/validate
 ### Check Nginx Configuration
 
 ```bash
-docker exec nginx-api-gateway nginx -t
+docker exec nginx-gateway-tlng nginx -t
 ```
 
 ### View Logs
 
 ```bash
 # Access logs
-docker exec nginx-api-gateway tail -f /var/log/nginx/access.log
+docker exec nginx-gateway-tlng tail -f /var/log/nginx/access.log
 
 # Error logs
-docker exec nginx-api-gateway tail -f /var/log/nginx/error.log
+docker exec nginx-gateway-tlng tail -f /var/log/nginx/error.log
 
 # Audit logs
-docker exec nginx-api-gateway tail -f /var/log/nginx/audit.log
+docker exec nginx-gateway-tlng tail -f /var/log/nginx/audit.log
 ```
 
 ### Reload Configuration
 
 ```bash
-docker exec nginx-api-gateway openresty -c /etc/nginx/nginx.conf -s reload
+docker exec nginx-gateway-tlng openresty -c /etc/nginx/nginx.conf -s reload
 ```
 
-## Integration with Other Services
+## Integration
 
-The API Gateway integrates with:
+The API Gateway routes to:
+- **Ingestion Service**: Log submission (HTTP :8091, gRPC :50051)
+- **Query Service**: Status/content queries and audit operations (:8083)
+- **Redis** (optional): API key storage
+- **Auth Service** (optional): External authentication
 
-- **Log Ingestion Service**: Receives log submissions via HTTP/gRPC
-- **Query Service**: Routes query requests for status and content-based queries
-- **Redis** (optional): For API key storage if using Redis auth method
-- **Auth Service** (optional): External authentication service
-
-Ensure these services are on the same Docker network if you prepare use docker-compose (`logchain-network`).
+When using the root `docker-compose.yml`, all services are on the same Docker network automatically.

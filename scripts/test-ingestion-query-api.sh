@@ -63,7 +63,7 @@ echo -e "${YELLOW}[3/4] 测试按内容查询 (POST /v1/query_by_content)${NC}"
 CONTENT_QUERY_RESPONSE=$(curl -sk -X POST "$BASE_URL/v1/query_by_content" \
   -H "Content-Type: application/json" \
   -H "X-API-Key: $API_KEY" \
-  -d "{\"log_content\":\"$LOG_CONTENT}\"}")
+  -d "{\"log_content\":\"$LOG_CONTENT\"}")
 
 # 注意：这会查询到刚才提交的日志，因为使用了相同的内容
 echo "$CONTENT_QUERY_RESPONSE" | jq .
