@@ -2,11 +2,23 @@
 
 ## Overview
 
-LogChain is an enterprise-grade log attestation platform that leverages blockchain technology to provide **tamper-proof**, **transparent**, and **verifiable** log storage. By combining high-performance log ingestion with consortium blockchain attestation, LogChain ensures the integrity and authenticity of critical log data for compliance, auditing, and dispute resolution.
+LogChain is part of the **SecretFlow** ecosystem, designed as a critical component in trusted data infrastructure. It provides **tamper-proof**, **transparent**, and **verifiable** log attestation by integrating **privacy-preserving computation** with **consortium blockchain** technology.
+
+As enterprises increasingly adopt privacy-preserving computation for secure multi-party data collaboration, the need for trustworthy audit trails becomes essential. LogChain bridges this gap by ensuring that every computational process, data exchange, and model training activity can be attested on-chain, enabling all participating parties to verify the integrity and authenticity of shared logs without compromising data privacy.
 
 ## Why LogChain?
 
-Traditional log management systems face several challenges:
+### Privacy Computing Meets Blockchain
+
+Privacy-preserving computation enables secure data collaboration without exposing raw data, but it introduces new trust challenges:
+
+- **How can parties verify that computation was executed correctly?**
+- **How can regulators audit multi-party processes without accessing sensitive data?**
+- **How can disputes be resolved when logs are controlled by different parties?**
+
+LogChain solves these challenges by providing a **neutral, immutable audit layer** that all consortium members can trust. By combining SecretFlow's privacy-preserving capabilities with blockchain attestation, enterprises can achieve both **data privacy** and **process transparency**.
+
+### Traditional Challenges vs. LogChain Solution
 
 | Challenge | Traditional Approach | LogChain Solution |
 |-----------|---------------------|-------------------|
@@ -80,6 +92,12 @@ Different stakeholders access data through appropriate channels:
 - **Horizontal Scalability**: Stateless services enable easy scaling
 
 ## Use Cases
+
+### Privacy-Preserving Computation Audit
+In federated learning, secure multi-party computation (MPC), and trusted execution environments (TEE), LogChain records computation logs, model updates, and data access events. All participating parties can independently verify that the agreed-upon protocols were followed, without accessing each other's raw data.
+
+### Cross-Organization Data Collaboration
+When multiple enterprises collaborate on joint analytics or AI model training through SecretFlow, LogChain provides an immutable record of all data flows and computational steps, ensuring accountability and enabling post-hoc auditing by regulators or consortium governance bodies.
 
 ### Regulatory Compliance
 Financial institutions, healthcare providers, and government agencies can use LogChain to maintain audit trails that satisfy regulatory requirements (SOX, HIPAA, GDPR).
@@ -162,17 +180,18 @@ curl https://logchain.example.com/v1/audit/log/{log_hash} \
 
 ## Getting Started
 
-1. **Contact Us**: Reach out to discuss your requirements and deployment options
-2. **Pilot Deployment**: We'll help you set up a proof-of-concept environment
-3. **Integration**: Connect your log sources using our adapters or APIs
-4. **Go Live**: Scale to production with our support
+1. **Explore SecretFlow**: Learn about the [SecretFlow ecosystem](https://www.secretflow.org.cn/) for privacy-preserving computation
+2. **Deploy LogChain**: Follow our deployment guide to set up your attestation infrastructure
+3. **Integrate**: Connect your privacy computing pipelines or log sources using our adapters
+4. **Go Live**: Enable trusted audit trails for your multi-party data collaboration
 
 ## Learn More
 
+- [SecretFlow Documentation](https://www.secretflow.org.cn/docs/) - Privacy-preserving computation framework
 - [Technical Architecture](design.md) - Detailed system design and specifications
 - [Deployment Guide](chainmaker_deployment.md) - Self-hosted deployment instructions
 - [GitHub Repository](https://github.com/secretflow/logchain) - Source code and documentation
 
 ---
 
-*LogChain - Making every log trustworthy.*
+*LogChain - Enabling trusted audit trails for privacy-preserving data collaboration.*
