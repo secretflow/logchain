@@ -1,43 +1,101 @@
-# Query Layer
+# Query Service
 
-## Overview
+Multi-dimensional query APIs for different user types.
 
-The Query Layer provides multi-dimensional query services for different user types as specified in the design document.
+## Structure
 
-## Planned APIs
+```
+query/
+├── service/          # Query service implementation
+│   ├── core/        # Business logic
+│   └── http/        # HTTP handlers
+└── auth/            # Authentication middleware
+    └── middleware.go
+```
 
-Based on `../docs/design.md`, this layer will implement three distinct APIs:
+## APIs
 
-### API 1: Task Status Query (for API Callers)
-- **Endpoint**: `GET /status/{request_id}`
-- **Authentication**: API Key
-- **Purpose**: Allows "active push" clients to check on-chain status using the returned `request_id`
-- **Scope**: Can only query logs submitted by themselves
+### API 1: Status Query by Request ID
+- **Endpoint:** `GET /v1/query/status/{request_id}`
+- **Auth:** API Key
+- **Purpose:** Check attestation status using `request_id` from submission
+- **Data Source:** Database (fast)
 
-### API 2: Content Reverse Lookup (for Non-API Users)
-- **Endpoint**: `POST /query_by_content`
-- **Authentication**: API Key
-- **Purpose**: Allows "passive access" (Syslog/Kafka) users to find on-chain credentials using original log content
-- **Request Body**: `{"log_content": "your raw log string"}`
-- **Scope**: Can only query logs from their own systems
+### API 2: Query by Log Content
+- **Endpoint:** `POST /v1/query_by_content`
+- **Auth:** API Key
+- **Purpose:** Find credentials using original log content (for Syslog/Kafka users)
+- **Data Source:** Database (computes hash, then queries)
 
-### API 3: On-chain Public Audit (for Alliance Members)
-- **Endpoints**:
-  - `GET /log/by_tx/{tx_hash}`
-  - `GET /log/{on_chain_log_id}`
-- **Authentication**: mTLS + IP whitelist
-- **Purpose**: Satisfies "transparent notarization" business requirements for alliance member auditing
-- **Scope**: Can audit all on-chain log data
+### API 3: Blockchain Audit
+- **Endpoint:** `GET /v1/audit/log/{log_hash}`
+- **Auth:** mTLS + IP Whitelist
+- **Purpose:** Verify log data from blockchain (consortium members)
+- **Data Source:** Blockchain (authoritative)
 
-## Implementation Status
+## Architecture
 
-🚧 **TODO**: Not yet implemented
+### Query Flow
 
-This directory is prepared for future implementation of the Query Layer services.
+```
+HTTP Request → Auth Middleware → Handler → Core Service
+                                               ↓
+                                    Database or Blockchain
+```
 
-## Architecture Notes
+### Authentication
 
-- Will query both State DB (for status) and blockchain (for content)
-- Implements multi-level authentication and authorization
-- Provides audit logging for all query operations
-- Follows the principle of least privilege for each user type
+**API Key (API 1 & 2):**
+- Middleware: `auth.RequireAPIKey()`
+- Headers: `X-Auth-Method`, `X-API-Client-ID`, `X-Client-Org-ID`
+- Scope: Can only query own organization's logs
+
+**mTLS (API 3):**
+- Middleware: `auth.RequireMTLS()`
+- Headers: `X-Auth-Method`, `X-Member-ID`
+- Scope: Can audit all on-chain data
+
+### Response Structure
+
+**Database Query (API 1 & 2):**
+```json
+{
+  "source": "database",
+  "request_id": "uuid",
+  "log_hash": "sha256",
+  "source_org_id": "org-id",
+  "status": "COMPLETED",
+  "tx_hash": "blockchain-tx-hash",
+  "block_height": 12345
+}
+```
+
+**Blockchain Audit (API 3):**
+```json
+{
+  "source": "blockchain",
+  "log_hash": "sha256",
+  "log_content": "original log",
+  "sender_org_id": "org-id",
+  "timestamp": "2025-12-23T10:00:00Z"
+}
+```
+
+## Key Features
+
+- **Multi-source Queries**: Database for speed, blockchain for verification
+- **Role-based Access**: Different APIs for different user types
+- **Org Isolation**: API Key users can only see their own logs
+- **Audit Trail**: All queries logged for compliance
+- **Error Handling**: Clear error messages for debugging
+
+## Status Values
+
+- `RECEIVED` - Log accepted, pending processing
+- `PROCESSING` - Being submitted to blockchain
+- `COMPLETED` - Successfully on blockchain
+- `FAILED` - Processing failed (with error details)
+
+## Development
+
+See [`cmd/query/README.md`](../cmd/query/README.md) for running the service locally.
