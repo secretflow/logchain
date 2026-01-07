@@ -14,8 +14,8 @@ fi
 LOG_HASH="$1"
 BASE_URL="https://localhost"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CLIENT_CERT="${SCRIPT_DIR}/../ingress/scripts/clients/regulatory-001/client-cert.pem"
-CLIENT_KEY="${SCRIPT_DIR}/../ingress/scripts/clients/regulatory-001/client-key.pem"
+CLIENT_CERT="${SCRIPT_DIR}/../ingress/scripts/clients/member-001/client-cert.pem"
+CLIENT_KEY="${SCRIPT_DIR}/../ingress/scripts/clients/member-001/client-key.pem"
 CA_CERT="${SCRIPT_DIR}/../ingress/nginx/ssl/ca-cert.pem"
 
 # 颜色定义
@@ -34,7 +34,7 @@ echo ""
 # 检查证书文件
 if [ ! -f "$CLIENT_CERT" ] || [ ! -f "$CLIENT_KEY" ]; then
     echo -e "${RED}✗ 客户端证书不存在${NC}"
-    echo "请先运行: cd ingress && bash scripts/generate-client-cert.sh regulatory-001 \"Regulatory Authority A\""
+    echo "请先运行: cd ingress && bash scripts/generate-client-cert.sh member-001 \"Regulatory Authority A\""
     exit 1
 fi
 

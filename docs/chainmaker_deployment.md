@@ -17,17 +17,13 @@ The Rust contract source code can be found in `blockchain/contracts.md`. Please 
 
 ### ⚠️ Rust Version Requirements
 
-**Crucial for Compilation:**
-Although official documentation might mention older versions (like 1.63.0), our testing confirms:
-
--   ❌ **v1.63.0**: Too old, causes errors.
--   ❌ **v1.75+**: Encounter compilation issues.
--   ✅ **v1.71.1**: **Recommended and verified version.**
+If you encounter compilation issues with your current Rust version, try **v1.71.1** which has been verified to work correctly.
 
 ## 3. Client Configuration
 
-After deploying ChainMaker, you must update the client configuration to point to your local installation.
+After deploying ChainMaker, configure the client connection:
 
-**File:** `config/clients/chainmaker.yml`
+1. Copy `.env.example` to `.env` and set your ChainMaker path and node addresses
+2. Run `bash scripts/generate-chainmaker-config.sh` to generate `config/clients/chainmaker.yml`
 
-Update the paths (e.g., `user_key_path`, `user_cert_path`, `ca_paths`) to match your actual ChainMaker installation directory.
+**For detailed configuration steps**, see [config/README.md](../config/README.md).
